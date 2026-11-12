@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio_background/just_audio_background.dart';
@@ -18,6 +19,12 @@ import 'ui/app_shell.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // The SIL OFL asks for the licence to travel with the font.
+  LicenseRegistry.addLicense(() async* {
+    yield LicenseEntryWithLineBreaks(
+        const ['에이투지체 (A2Z)'], await rootBundle.loadString('assets/fonts/A2Z-OFL.txt'));
+  });
 
   await JustAudioBackground.init(
     androidNotificationChannelId: 'com.oye.oye.channel.audio',

@@ -183,6 +183,12 @@ void main() {
       await _loadFont('Roboto', '$fonts/Roboto-Regular.ttf');
       await _loadFont('MaterialIcons', '$fonts/MaterialIcons-Regular.otf');
       await _loadFont('packages/cupertino_icons/CupertinoIcons', _cupertinoIconsFont());
+      final a2z = FontLoader('A2Z');
+      for (final f in ['A2Z-4Regular.otf', 'A2Z-8ExtraBold.otf']) {
+        a2z.addFont(Future.value(ByteData.view(
+            Uint8List.fromList(File('assets/fonts/$f').readAsBytesSync()).buffer)));
+      }
+      await a2z.load();
     });
     await tester.pump(); // consume the frame scheduled by the font-change notification
 

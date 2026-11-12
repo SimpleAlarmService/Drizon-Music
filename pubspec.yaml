@@ -58,6 +58,28 @@ flutter_launcher_icons:
 flutter:
   uses-material-design: true
 
-  # The "Drizon Music" wordmark uses 에이투지체 (family "A2Z"). Until the font
-  # files are added under assets/fonts/ and declared here, Flutter falls back
-  # to the system sans-serif.
+  assets:
+    - assets/fonts/A2Z-OFL.txt
+
+  # 에이투지체 (SIL OFL 1.1), used by the "Drizon Music" wordmark.
+  fonts:
+    - family: A2Z
+      fonts:
+        - asset: assets/fonts/A2Z-1Thin.otf
+          weight: 100
+        - asset: assets/fonts/A2Z-2ExtraLight.otf
+          weight: 200
+        - asset: assets/fonts/A2Z-3Light.otf
+          weight: 300
+        - asset: assets/fonts/A2Z-4Regular.otf
+          weight: 400
+        - asset: assets/fonts/A2Z-5Medium.otf
+          weight: 500
+        - asset: assets/fonts/A2Z-6SemiBold.otf
+          weight: 600
+        - asset: assets/fonts/A2Z-7Bold.otf
+          weight: 700
+        - asset: assets/fonts/A2Z-8ExtraBold.otf
+          weight: 800
+        - asset: assets/fonts/A2Z-9Black.otf
+          weight: 900

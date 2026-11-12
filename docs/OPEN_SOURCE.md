@@ -20,7 +20,7 @@ README는 Drizon 소스를 MIT로 표기합니다. 저장소에는 아직 LICENS
 | [cached_network_image](https://pub.dev/packages/cached_network_image) 3.4.1 | MIT | 커버 이미지 캐시. |
 | [rxdart](https://pub.dev/packages/rxdart) 0.27.7 | Apache-2.0 | 스트림 유틸리티. |
 | [cupertino_icons](https://pub.dev/packages/cupertino_icons) 1.0.9 | MIT | iOS 스타일 아이콘. |
-| 에이투지체 | 배포처 조건을 따릅니다 (파일 추가 시 확인) | "Drizon Music" 로고. 아직 앱에 포함하지 않았습니다. |
+| 에이투지체 (A2Z, PT& · 이주임) | SIL OFL 1.1 | "Drizon Music" 로고. 9가지 굵기의 OTF를 수정 없이 넣고, [라이선스 원문](../assets/fonts/A2Z-OFL.txt)을 앱의 라이선스 화면에 등록합니다. 라틴 글자는 [Outfit](https://github.com/Outfitio/Outfit-Fonts)(OFL)에서 왔습니다. |
 | [NewPipe Extractor](https://github.com/TeamNewPipe/NewPipeExtractor) v0.26.1 | GPL-3.0 | **Android만.** YouTube 검색과 스트림 주소 추출. |
 | [CPython](https://docs.python.org/3/license.html) 3.13 | PSF 라이선스 및 포함 구성 요소별 고지 | **iOS만.** [BeeWare Python-Apple-support](https://github.com/beeware/Python-Apple-support)(MIT)가 iOS용으로 빌드한 `Python.xcframework`를 앱에 넣습니다. OpenSSL 등 포함 라이브러리의 고지는 해당 배포본을 따릅니다. |
 | [yt-dlp](https://github.com/yt-dlp/yt-dlp/blob/master/LICENSE) | Unlicense | **iOS만.** 앱 안의 Python에서 라이브러리로 실행하는 스트림 추출기. 설정에서 PyPI의 새 버전으로 바꿀 수 있습니다. |
