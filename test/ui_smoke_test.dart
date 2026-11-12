@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -7,11 +8,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:just_audio_platform_interface/just_audio_platform_interface.dart';
 import 'package:oye/main.dart';
 import 'package:oye/models/settings_model.dart';
 import 'package:oye/models/track.dart';
+import 'package:oye/services/download_service.dart';
+import 'package:oye/services/engines/bugs_client.dart';
+import 'package:oye/services/engines/lrclib_client.dart';
+import 'package:oye/services/engines/ytmusic_client.dart';
 import 'package:oye/services/library_service.dart';
+import 'package:oye/services/metadata_service.dart';
 import 'package:oye/services/music_service.dart';
 import 'package:oye/services/player_service.dart';
 import 'package:oye/services/settings_service.dart';
@@ -114,6 +122,27 @@ String? _cupertinoIconsFont() {
 Track _t(String id, String title, String artist) => Track(
     videoId: id, title: title, artist: artist, thumbnail: '', duration: '3:12', durationSec: 192);
 
+/// Answers like YouTube Music / Bugs / LRCLIB did when the fixtures were captured.
+MockClient _fakeWeb() => MockClient((req) async {
+      String f(String n) => File('test/fixtures/$n').readAsStringSync();
+      final url = req.url.toString();
+      final utf8Headers = {'content-type': 'application/json; charset=utf-8'};
+      if (url.contains('get_search_suggestions')) {
+        return http.Response.bytes(utf8.encode(f('ytm_suggestions.json')), 200, headers: utf8Headers);
+      }
+      if (url.contains('youtubei/v1/search')) {
+        return http.Response.bytes(utf8.encode(f('ytm_search_unfiltered.json')), 200, headers: utf8Headers);
+      }
+      if (url.contains('bugs.co.kr/search/track')) {
+        return http.Response.bytes(utf8.encode(f('bugs_search_iu.html')), 200);
+      }
+      if (url.contains('bugs.co.kr/player/lyrics/T/')) {
+        return http.Response.bytes(utf8.encode(f('bugs_lyrics_synced.json')), 200, headers: utf8Headers);
+      }
+      if (url.contains('lrclib.net')) return http.Response('[]', 200);
+      return http.Response('', 404);
+    });
+
 // ── Test ─────────────────────────────────────────────────────────────────────
 
 void main() {
@@ -154,11 +183,18 @@ void main() {
     final storage = StorageService()..initWithPrefs(prefs);
     final settings = SettingsService();
     await settings.init(prefs);
-    final library = LibraryService(storage);
     final music = _FakeMusic();
+    final web = _fakeWeb();
+    final ytm = YtmClient(client: web);
+    final metadata = MetadataService(
+        prefs, ytm, BugsClient(client: web), LrclibClient(client: web));
+    final tmp = await tester.runAsync(() => Directory.systemTemp.createTemp('drizon_ui'));
+    final downloads = DownloadService(prefs, music, directory: () async => tmp!);
+    await tester.runAsync(downloads.init);
+    final library = LibraryService(storage, downloads: downloads);
 
     final songs = [
-      _t('a', 'Blinding Lights', 'The Weeknd'),
+      _t('a', '밤편지', '아이유'),
       _t('b', 'Levitating', 'Dua Lipa'),
       _t('c', 'Peaches', 'Justin Bieber'),
       _t('d', 'As It Was', 'Harry Styles'),
@@ -189,6 +225,9 @@ void main() {
           ChangeNotifierProvider<SettingsService>.value(value: settings),
           ChangeNotifierProvider<PlayerService>.value(value: player),
           ChangeNotifierProvider<LibraryService>.value(value: library),
+          ChangeNotifierProvider<MetadataService>.value(value: metadata),
+          ChangeNotifierProvider<DownloadService>.value(value: downloads),
+          Provider<YtmClient>.value(value: ytm),
         ],
         child: const DrizonApp(),
       ),
@@ -213,11 +252,31 @@ void main() {
     await shot(tester, 'ui_library_playing');
     expect(player.currentTrack, isNotNull);
 
-    // Open now playing from the mini player
+    // Open now playing from the mini player, on a single-song queue so the
+    // fake player doesn't skip ahead.
+    player.playTrack(songs[0], queue: [songs[0]]);
+    await settle(tester);
     await tester.tap(find.byType(MiniPlayer));
     await settle(tester);
     await shot(tester, 'ui_now_playing');
     expect(find.byType(NowPlayingPage), findsOneWidget);
+
+    // Lyrics: matched on Bugs (captured response) and shown synced.
+    await tester.tap(find.byIcon(CupertinoIcons.quote_bubble));
+    LyricsResult? lyricsResult;
+    metadata.lyricsFor(songs[0]).then((r) => lyricsResult = r);
+    for (var i = 0; i < 40 && lyricsResult == null; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    // ignore: avoid_print
+    print('lyrics: provider=${lyricsResult?.provider} error=${lyricsResult?.error} '
+        'lines=${lyricsResult?.lyrics?.synced.length}');
+    await settle(tester);
+    await shot(tester, 'ui_lyrics');
+    expect(find.text('이 밤 그날의 반딧불을'), findsOneWidget);
+    expect(find.textContaining('가사 제공: 벅스'), findsOneWidget);
+    await tester.tap(find.byIcon(CupertinoIcons.quote_bubble_fill));
+    await settle(tester);
 
     // Queue sheet
     await tester.tap(find.byIcon(CupertinoIcons.list_bullet));
@@ -231,8 +290,13 @@ void main() {
     // Search tab
     await tester.tap(find.byIcon(CupertinoIcons.search).first);
     await settle(tester);
-    await tester.enterText(find.byType(CupertinoSearchTextField), 'weeknd');
-    await tester.pump(const Duration(milliseconds: 700));
+    await tester.enterText(find.byType(CupertinoSearchTextField), '아이유 밤');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await settle(tester);
+    await shot(tester, 'ui_suggestions');
+    expect(find.text('아이유 밤편지 노래방'), findsOneWidget);
+    await tester.tap(find.text('아이유 밤편지'));
     await settle(tester);
     await shot(tester, 'ui_search');
     expect(find.textContaining('Result 0'), findsOneWidget);

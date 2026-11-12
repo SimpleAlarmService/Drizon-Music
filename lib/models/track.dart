@@ -6,6 +6,10 @@ class Track {
   final String duration;
   final int durationSec;
 
+  /// Album name and square cover, when known (YouTube Music songs carry both).
+  final String? album;
+  final String? albumArt;
+
   const Track({
     required this.videoId,
     required this.title,
@@ -13,6 +17,8 @@ class Track {
     required this.thumbnail,
     this.duration = '0:00',
     this.durationSec = 0,
+    this.album,
+    this.albumArt,
   });
 
   factory Track.fromMap(Map<dynamic, dynamic> m) {
@@ -25,6 +31,8 @@ class Track {
       thumbnail: m['thumbnail'] as String? ?? '',
       duration: dur,
       durationSec: durSec,
+      album: m['album'] as String?,
+      albumArt: m['albumArt'] as String?,
     );
   }
 
@@ -35,7 +43,11 @@ class Track {
         'thumbnail': thumbnail,
         'duration': duration,
         'durationSec': durationSec,
+        if (album != null) 'album': album,
+        if (albumArt != null) 'albumArt': albumArt,
       };
+
+  static String secToString(int sec) => _secToString(sec);
 
   static String _secToString(int sec) {
     final m = sec ~/ 60;

@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import '../../models/playlist.dart';
 import '../../models/track.dart';
+import '../../services/download_service.dart';
 import '../../services/library_service.dart';
 import '../../services/player_service.dart';
 
@@ -51,6 +52,8 @@ Future<void> showTrackActions(
   final player = context.read<PlayerService>();
   final library = context.read<LibraryService>();
   final liked = library.isLiked(track.videoId);
+  final downloads = context.read<DownloadService>();
+  final dl = downloads.status(track.videoId);
 
   return showCupertinoModalPopup<void>(
     context: context,
@@ -79,6 +82,30 @@ Future<void> showTrackActions(
           },
           child: const Text('플레이리스트에 추가…'),
         ),
+        switch (dl) {
+          DownloadStatus.done => CupertinoActionSheetAction(
+              isDestructiveAction: true,
+              onPressed: () {
+                Navigator.pop(ctx);
+                downloads.remove(track.videoId);
+              },
+              child: const Text('다운로드 삭제'),
+            ),
+          DownloadStatus.queued || DownloadStatus.downloading => CupertinoActionSheetAction(
+              onPressed: () {
+                Navigator.pop(ctx);
+                downloads.cancel(track.videoId);
+              },
+              child: const Text('다운로드 취소'),
+            ),
+          _ => CupertinoActionSheetAction(
+              onPressed: () {
+                Navigator.pop(ctx);
+                downloads.download(track);
+              },
+              child: Text(dl == DownloadStatus.failed ? '다운로드 다시 시도' : '다운로드'),
+            ),
+        },
         if (fromPlaylist != null)
           CupertinoActionSheetAction(
             isDestructiveAction: true,

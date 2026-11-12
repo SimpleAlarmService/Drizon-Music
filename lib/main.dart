@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio_background/just_audio_background.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'services/download_service.dart';
+import 'services/engines/bugs_client.dart';
+import 'services/engines/ytmusic_client.dart';
 import 'services/library_service.dart';
+import 'services/metadata_service.dart';
 import 'services/music_service.dart';
 import 'services/player_service.dart';
 import 'services/settings_service.dart';
@@ -34,14 +39,24 @@ void main() async {
   final settings = SettingsService();
   await settings.init(prefs);
 
-  final music = MusicService();
+  final ytm = YtmClient();
+  final bugs = BugsClient();
+  final metadata = MetadataService(prefs, ytm, bugs);
+
+  final music = MusicService(ytm: ytm);
   music.applySettings(settings.settings);
   // Keep extractor behaviour in sync with the settings screen.
   settings.addListener(() => music.applySettings(settings.settings));
 
-  final library = LibraryService(storage);
+  final downloads = DownloadService(prefs, music,
+      directory: getApplicationDocumentsDirectory);
+  await downloads.init();
+
+  final library = LibraryService(storage, downloads: downloads);
   final player = PlayerService(music, storage, settings)
-    ..onHistoryChanged = library.historyChanged;
+    ..onHistoryChanged = library.historyChanged
+    ..onTrackStarted = metadata.prefetch
+    ..localFileFor = downloads.localPath;
   await player.restoreState();
 
   runApp(
@@ -52,6 +67,9 @@ void main() async {
         ChangeNotifierProvider<SettingsService>.value(value: settings),
         ChangeNotifierProvider<PlayerService>.value(value: player),
         ChangeNotifierProvider<LibraryService>.value(value: library),
+        ChangeNotifierProvider<MetadataService>.value(value: metadata),
+        ChangeNotifierProvider<DownloadService>.value(value: downloads),
+        Provider<YtmClient>.value(value: ytm),
       ],
       child: const DrizonApp(),
     ),

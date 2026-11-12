@@ -5,17 +5,26 @@ import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:provider/provider.dart';
 import '../../models/track.dart';
 import '../../services/library_service.dart';
+import '../../services/metadata_service.dart';
 import '../../services/player_service.dart';
 import '../widgets/actions.dart';
 import '../widgets/artwork.dart';
+import '../widgets/lyrics_view.dart';
 
 /// Full-screen player: blurred artwork backdrop, big cover that shrinks while
 /// paused, scrubber, transport controls and the queue sheet.
-class NowPlayingPage extends StatelessWidget {
+class NowPlayingPage extends StatefulWidget {
   const NowPlayingPage({super.key});
 
   static Route<void> route() => CupertinoPageRoute<void>(
       fullscreenDialog: true, builder: (_) => const NowPlayingPage());
+
+  @override
+  State<NowPlayingPage> createState() => _NowPlayingPageState();
+}
+
+class _NowPlayingPageState extends State<NowPlayingPage> {
+  bool _lyrics = false;
 
   @override
   Widget build(BuildContext context) {
@@ -40,16 +49,25 @@ class NowPlayingPage extends StatelessWidget {
                   children: [
                     const SizedBox(height: 8),
                     _Grabber(onTap: () => Navigator.of(context).pop()),
-                    const SizedBox(height: 20),
-                    Expanded(child: _BigArtwork(track: track)),
-                    const SizedBox(height: 28),
-                    _TitleRow(track: track),
+                    if (_lyrics) ...[
+                      const SizedBox(height: 12),
+                      _TitleRow(track: track, compact: true),
+                      Expanded(child: LyricsView(track: track)),
+                    ] else ...[
+                      const SizedBox(height: 20),
+                      Expanded(child: _BigArtwork(track: track)),
+                      const SizedBox(height: 28),
+                      _TitleRow(track: track),
+                    ],
                     const SizedBox(height: 18),
                     const _Scrubber(),
                     const SizedBox(height: 14),
                     const _Controls(),
                     const SizedBox(height: 18),
-                    _BottomBar(),
+                    _BottomBar(
+                      lyrics: _lyrics,
+                      onToggleLyrics: () => setState(() => _lyrics = !_lyrics),
+                    ),
                     const SizedBox(height: 8),
                   ],
                 ),
@@ -68,20 +86,22 @@ class _Backdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final image = context.select<MetadataService, String?>((m) => m.artFor(track)) ??
+        track.thumbnail;
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 500),
       child: Stack(
-        key: ValueKey(track.videoId),
+        key: ValueKey(image),
         fit: StackFit.expand,
         children: [
           const ColoredBox(color: Color(0xFF111111)),
-          if (track.thumbnail.isNotEmpty)
+          if (image.isNotEmpty)
             ImageFiltered(
               imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
               child: Transform.scale(
                 scale: 1.8,
                 child: CachedNetworkImage(
-                  imageUrl: track.thumbnail,
+                  imageUrl: image,
                   fit: BoxFit.cover,
                   errorWidget: (_, _, _) => const SizedBox.shrink(),
                 ),
@@ -150,8 +170,9 @@ class _BigArtwork extends StatelessWidget {
 }
 
 class _TitleRow extends StatelessWidget {
-  const _TitleRow({required this.track});
+  const _TitleRow({required this.track, this.compact = false});
   final Track track;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -159,6 +180,10 @@ class _TitleRow extends StatelessWidget {
         .select<LibraryService, bool>((l) => l.isLiked(track.videoId));
     return Row(
       children: [
+        if (compact) ...[
+          Artwork(track: track, size: 52, radius: 6),
+          const SizedBox(width: 12),
+        ],
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -166,16 +191,17 @@ class _TitleRow extends StatelessWidget {
               Text(track.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                       color: Colors.white,
-                      fontSize: 22,
+                      fontSize: compact ? 17 : 22,
                       fontWeight: FontWeight.w700)),
               const SizedBox(height: 2),
               Text(track.artist,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.65), fontSize: 19)),
+                      color: Colors.white.withValues(alpha: 0.65),
+                      fontSize: compact ? 15 : 19)),
             ],
           ),
         ),
@@ -344,6 +370,10 @@ class _Toggle extends StatelessWidget {
 }
 
 class _BottomBar extends StatelessWidget {
+  const _BottomBar({required this.lyrics, required this.onToggleLyrics});
+  final bool lyrics;
+  final VoidCallback onToggleLyrics;
+
   @override
   Widget build(BuildContext context) {
     final error = context.select<PlayerService, String?>((p) => p.errorMessage);
@@ -358,8 +388,16 @@ class _BottomBar extends StatelessWidget {
                 style: const TextStyle(color: Color(0xFFFF8A80), fontSize: 12)),
           ),
         Row(
-          mainAxisAlignment: MainAxisAlignment.end,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
+            IconButton(
+              tooltip: '가사',
+              icon: Icon(
+                  lyrics ? CupertinoIcons.quote_bubble_fill : CupertinoIcons.quote_bubble,
+                  color: lyrics ? Colors.white : Colors.white.withValues(alpha: 0.8),
+                  size: 26),
+              onPressed: onToggleLyrics,
+            ),
             IconButton(
               icon: Icon(CupertinoIcons.list_bullet,
                   color: Colors.white.withValues(alpha: 0.8), size: 26),

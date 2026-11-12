@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/settings_model.dart';
+import '../../services/download_service.dart';
 import '../../services/library_service.dart';
 import '../../services/music_service.dart';
 import '../../services/settings_service.dart';
@@ -80,6 +81,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final pal = context.pal;
     final service = context.watch<SettingsService>();
     final s = service.settings;
+    final downloads = context.watch<DownloadService>();
 
     return Scaffold(
       appBar: AppBar(title: const Text('설정')),
@@ -157,6 +159,24 @@ class _SettingsPageState extends State<SettingsPage> {
             ],
           ),
           CupertinoListSection.insetGrouped(
+            header: const Text('다운로드'),
+            footer: Text('기본은 스트리밍이에요. 곡의 ⋯ 메뉴에서 다운로드하면 오프라인으로 재생돼요.',
+                style: Type.caption(pal)),
+            children: [
+              CupertinoListTile(
+                title: const Text('사용 중인 공간'),
+                additionalInfo: Text(_formatBytes(downloads.totalBytes)),
+              ),
+              CupertinoListTile(
+                title: Text('다운로드 모두 삭제 (${downloads.tracks.length}곡)',
+                    style: const TextStyle(color: CupertinoColors.destructiveRed)),
+                onTap: downloads.tracks.isEmpty
+                    ? null
+                    : () => _confirm('다운로드한 곡을 모두 지울까요?', '삭제', downloads.removeAll),
+              ),
+            ],
+          ),
+          CupertinoListSection.insetGrouped(
             header: const Text('데이터'),
             children: [
               CupertinoListTile(
@@ -177,6 +197,12 @@ class _SettingsPageState extends State<SettingsPage> {
         ],
       ),
     );
+  }
+
+  static String _formatBytes(int bytes) {
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(0)} KB';
+    if (bytes < 1024 * 1024 * 1024) return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
   }
 
   String _engineLabel(ExtractorType t) => switch (t) {

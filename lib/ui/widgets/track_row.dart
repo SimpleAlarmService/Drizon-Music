@@ -2,6 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/track.dart';
+import '../../services/download_service.dart';
+import '../../services/metadata_service.dart';
 import '../../services/player_service.dart';
 import '../../theme.dart';
 import 'artwork.dart';
@@ -27,6 +29,9 @@ class TrackRow extends StatelessWidget {
         (p) => p.currentTrack?.videoId == track.videoId);
     final isPlaying =
         context.select<PlayerService, bool>((p) => isCurrent && p.isPlaying);
+    final album = context.select<MetadataService, String?>((m) => m.albumFor(track));
+    final dl = context.select<DownloadService, DownloadStatus>((d) => d.status(track.videoId));
+    final dlProgress = context.select<DownloadService, double>((d) => d.progress(track.videoId));
 
     return InkWell(
       onTap: onTap,
@@ -70,7 +75,7 @@ class TrackRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    track.artist,
+                    album == null || album.isEmpty ? track.artist : '${track.artist} · $album',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Type.sub(pal),
@@ -78,6 +83,31 @@ class TrackRow extends StatelessWidget {
                 ],
               ),
             ),
+            if (dl == DownloadStatus.done)
+              Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: Icon(CupertinoIcons.arrow_down_circle_fill,
+                    size: 15, color: pal.secondaryLabel),
+              )
+            else if (dl == DownloadStatus.downloading || dl == DownloadStatus.queued)
+              Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: SizedBox(
+                  width: 15,
+                  height: 15,
+                  child: CircularProgressIndicator(
+                    value: dl == DownloadStatus.queued || dlProgress == 0 ? null : dlProgress,
+                    strokeWidth: 2,
+                    color: kAccent,
+                    backgroundColor: pal.surfaceHigh,
+                  ),
+                ),
+              )
+            else if (dl == DownloadStatus.failed)
+              const Padding(
+                padding: EdgeInsets.only(left: 8),
+                child: Icon(CupertinoIcons.exclamationmark_circle, size: 15, color: kAccent),
+              ),
             if (track.durationSec > 0)
               Padding(
                 padding: const EdgeInsets.only(left: 8),

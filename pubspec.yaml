@@ -23,6 +23,12 @@ dependencies:
   # Image caching
   cached_network_image: ^3.4.1
 
+  # HTTP for the YouTube Music search engine and Bugs lyrics
+  http: ^1.2.0
+
+  # App documents directory for optional offline downloads
+  path_provider: ^2.1.4
+
   # State management
   provider: ^6.1.2
 

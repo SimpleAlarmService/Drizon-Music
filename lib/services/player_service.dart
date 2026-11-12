@@ -36,6 +36,12 @@ class PlayerService extends ChangeNotifier {
   /// Called after a track is written to the play history, so the library UI can refresh.
   VoidCallback? onHistoryChanged;
 
+  /// Called as soon as a track is selected for playback (before the stream resolves).
+  void Function(Track track)? onTrackStarted;
+
+  /// Path of an offline copy, if the user downloaded this track.
+  String? Function(String videoId)? localFileFor;
+
   // ── Constructor ──────────────────────────────────────────────────────────────
 
   PlayerService(this._music, this._storage, this._settings) {
@@ -125,27 +131,29 @@ class PlayerService extends ChangeNotifier {
 
     final track = _queue[index];
     _currentIndex = index;
+    if (attempt == 0) onTrackStarted?.call(track);
     _isSwitching = true;
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final stream = await _music.getStreamInfo(track.videoId);
-
-      await _player.setAudioSource(
-        AudioSource.uri(
-          Uri.parse(stream.url),
-          headers: stream.headers,
-          tag: MediaItem(
-            id: track.videoId,
-            album: 'Drizon',
-            title: track.title,
-            artist: track.artist,
-            artUri: Uri.parse(track.thumbnail),
-          ),
-        ),
+      final tag = MediaItem(
+        id: track.videoId,
+        album: track.album ?? 'Drizon',
+        title: track.title,
+        artist: track.artist,
+        artUri: Uri.parse(track.albumArt ?? track.thumbnail),
       );
+      final local = localFileFor?.call(track.videoId);
+      if (local != null) {
+        await _player.setAudioSource(AudioSource.file(local, tag: tag));
+      } else {
+        final stream = await _music.getStreamInfo(track.videoId);
+        await _player.setAudioSource(
+          AudioSource.uri(Uri.parse(stream.url), headers: stream.headers, tag: tag),
+        );
+      }
 
       _isSwitching = false;
       await _player.play();

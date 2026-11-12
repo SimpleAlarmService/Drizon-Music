@@ -2,7 +2,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../models/track.dart';
+import 'package:provider/provider.dart';
 import '../../services/library_service.dart';
+import '../../services/metadata_service.dart';
 import '../../theme.dart';
 
 /// Square album art. YouTube thumbnails are 16:9, so they are centre-cropped.
@@ -32,8 +34,11 @@ class Artwork extends StatelessWidget {
     );
 
     final t = track;
+    // Album cover from YouTube Music (or matched later) beats a video frame.
+    final art = context.select<MetadataService, String?>(
+        (m) => t == null ? null : m.artFor(t));
     Widget image;
-    if (t == null || t.thumbnail.isEmpty) {
+    if (t == null || (t.thumbnail.isEmpty && art == null)) {
       image = placeholder;
     } else {
       Widget plain() => CachedNetworkImage(
@@ -43,7 +48,7 @@ class Artwork extends StatelessWidget {
             placeholder: (_, _) => placeholder,
             errorWidget: (_, _, _) => placeholder,
           );
-      image = hiRes
+      Widget frame() => hiRes
           ? CachedNetworkImage(
               imageUrl: 'https://i.ytimg.com/vi/${t.videoId}/maxresdefault.jpg',
               fit: BoxFit.cover,
@@ -52,6 +57,15 @@ class Artwork extends StatelessWidget {
               errorWidget: (_, _, _) => plain(),
             )
           : plain();
+      image = art == null
+          ? frame()
+          : CachedNetworkImage(
+              imageUrl: art,
+              fit: BoxFit.cover,
+              fadeInDuration: const Duration(milliseconds: 150),
+              placeholder: (_, _) => placeholder,
+              errorWidget: (_, _, _) => frame(),
+            );
     }
 
     final box = ClipRRect(
@@ -95,6 +109,9 @@ class CollectionArtwork extends StatelessWidget {
       case CollectionKind.history:
         content = _gradient(const [Color(0xFF396AFC), Color(0xFF2948FF)],
             CupertinoIcons.clock_fill);
+      case CollectionKind.downloads:
+        content = _gradient(const [Color(0xFF34C759), Color(0xFF0E8A3E)],
+            CupertinoIcons.arrow_down_circle_fill);
       case CollectionKind.playlist:
         if (tracks.isEmpty) {
           final colors =

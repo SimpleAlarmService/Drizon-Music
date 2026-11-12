@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import '../models/track.dart';
 import '../models/settings_model.dart';
+import 'engines/ytmusic_client.dart';
 
 /// Abstract music service: search tracks + resolve audio stream URL.
 ///
@@ -27,10 +28,42 @@ abstract class MusicService {
   /// Apply extractor settings at runtime without recreating the service.
   void applySettings(AppSettings settings);
 
-  factory MusicService() {
-    if (Platform.isAndroid || Platform.isIOS) return _NativeMusicService();
-    return _DartMusicService();
+  /// With [ytm], search goes to the YouTube Music engine first (songs with album
+  /// art and album names); the platform extractor's search is the fallback.
+  factory MusicService({YtmClient? ytm}) {
+    final MusicService inner = (Platform.isAndroid || Platform.isIOS)
+        ? _NativeMusicService()
+        : _DartMusicService();
+    return ytm == null ? inner : _YtmSearchFirst(ytm, inner);
   }
+}
+
+class _YtmSearchFirst implements MusicService {
+  _YtmSearchFirst(this._ytm, this._inner);
+  final YtmClient _ytm;
+  final MusicService _inner;
+
+  @override
+  Future<List<Track>> search(String query) async {
+    try {
+      final items = await _ytm.search(query);
+      if (items.isNotEmpty) return items.map((i) => i.toTrack()).toList();
+    } catch (e) {
+      debugPrint('[MusicService] YouTube Music search failed, falling back: $e');
+    }
+    return _inner.search(query);
+  }
+
+  @override
+  Future<String> getStreamUrl(String videoId) => _inner.getStreamUrl(videoId);
+  @override
+  Future<StreamInfo> getStreamInfo(String videoId) => _inner.getStreamInfo(videoId);
+  @override
+  Future<String> updateExtractor() => _inner.updateExtractor();
+  @override
+  void applySettings(AppSettings settings) => _inner.applySettings(settings);
+  @override
+  Future<void> dispose() => _inner.dispose();
 }
 
 /// A resolved audio stream.

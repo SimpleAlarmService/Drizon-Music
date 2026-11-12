@@ -154,6 +154,8 @@ class _LibraryPageState extends State<LibraryPage> {
                   ? '비어 있어요. 곡의 ⋯ 메뉴에서 이 플레이리스트에 추가해 보세요.'
                   : selected.kind == CollectionKind.liked
                       ? '곡의 ⋯ 메뉴에서 좋아요를 누르면 여기에 모여요.'
+                      : selected.kind == CollectionKind.downloads
+                      ? '곡의 ⋯ 메뉴에서 다운로드하면 오프라인에서도 들을 수 있어요.'
                       : '재생한 곡이 여기에 기록돼요.',
               textAlign: TextAlign.center,
               style: Type.sub(pal),

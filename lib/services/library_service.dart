@@ -1,9 +1,10 @@
 import 'package:flutter/foundation.dart';
 import '../models/playlist.dart';
 import '../models/track.dart';
+import 'download_service.dart';
 import 'storage_service.dart';
 
-enum CollectionKind { liked, history, playlist }
+enum CollectionKind { liked, history, downloads, playlist }
 
 /// Anything that shows up as a cover in the library: liked songs, history, or a playlist.
 class Collection {
@@ -26,7 +27,17 @@ class Collection {
 /// goes through here so listeners rebuild.
 class LibraryService extends ChangeNotifier {
   final StorageService _storage;
-  LibraryService(this._storage);
+  final DownloadService? _downloads;
+
+  LibraryService(this._storage, {DownloadService? downloads}) : _downloads = downloads {
+    _downloads?.addListener(notifyListeners);
+  }
+
+  @override
+  void dispose() {
+    _downloads?.removeListener(notifyListeners);
+    super.dispose();
+  }
 
   List<Track> get liked => _storage.getLikedTracks().reversed.toList();
   List<Track> get history => _storage.getHistory();
@@ -43,6 +54,12 @@ class LibraryService extends ChangeNotifier {
             kind: CollectionKind.history,
             title: '최근 재생',
             tracks: history),
+        if (_downloads != null)
+          Collection(
+              id: 'downloads',
+              kind: CollectionKind.downloads,
+              title: '다운로드한 음악',
+              tracks: _downloads.tracks),
         for (final p in playlists)
           Collection(
               id: p.id,

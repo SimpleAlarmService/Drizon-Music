@@ -9,8 +9,11 @@
 | 기능 | 설명 |
 |------|------|
 | 🎠 **커버플로우 보관함** | 좋아요 · 최근 재생 · 내 플레이리스트를 3D 커버플로우로 넘겨보기 |
-| 🔍 **검색** | YouTube에서 실시간 트랙 검색 |
-| ▶️ **재생** | 백그라운드 재생, 잠금 화면 컨트롤 |
+| 🔍 **검색** | YouTube Music 사제 엔진(InnerTube) — 입력 중 추천어, 노래 · 뮤직비디오 구분, 앨범 정보 |
+| 💿 **앨범 커버 매칭** | 영상도 YouTube Music의 같은 음원을 찾아 정사각형 앨범 커버로 표시 |
+| 🎤 **실시간 가사** | 벅스 싱크 가사를 자동 매칭 (보조: LRCLIB). 현재 줄 강조 · 자동 스크롤 · 줄 눌러 이동 · 직접 고르기 |
+| ▶️ **재생** | 스트리밍이 기본. 백그라운드 재생, 잠금 화면 컨트롤 |
+| ⬇️ **선택 다운로드** | 원하는 곡만 받아 오프라인 재생, 보관함의 "다운로드한 음악" |
 | 🎧 **지금 재생 중** | 블러 배경, 일시정지 시 줄어드는 커버, 스크러버, 대기열(드래그 정렬 · 스와이프 삭제) |
 | 🔀 **셔플 / 반복** | 셔플 (히스토리 기반 뒤로가기), 반복 없음 / 한 곡 / 전체 |
 | 💾 **플레이리스트 · 좋아요** | 생성 · 이름 변경 · 삭제, 곡 추가 / 제거 |
@@ -31,7 +34,8 @@
                                        └── JavaScriptCore (JS 챌린지 해독)
 ```
 
-- **서버가 없습니다.** 검색과 스트림 URL 추출이 전부 기기 안에서 일어납니다.
+- **서버가 없습니다.** 검색, 스트림 URL 추출, 커버·가사 조회가 전부 기기 안에서 일어납니다.
+- 자세한 구조는 [기술 문서](docs/ARCHITECTURE.md), 라이선스와 콘텐츠 출처는 [오픈소스 문서](docs/OPEN_SOURCE.md)에 있습니다.
 - iOS는 앱 안에 **CPython**을 내장하고 **yt-dlp**를 라이브러리로 호출합니다.
 - iOS는 서브프로세스를 띄울 수 없어서 yt-dlp의 JS 런타임(deno/node 등)을 쓸 수 없습니다.
   대신 yt-dlp의 챌린지 공급자(`JsChallengeProvider`)를 구현해 **시스템 JavaScriptCore**로 해독합니다
@@ -46,7 +50,10 @@ lib/
 ├── theme.dart                 # Apple Music 팔레트 (라이트/다크), 텍스트 스타일
 ├── models/                    # Track · Playlist · AppSettings
 ├── services/
-│   ├── music_service.dart     # 검색 · 스트림 추출 (Android: NewPipe, iOS: yt-dlp, 공통 폴백: Dart)
+│   ├── engines/               # YouTube Music 검색 · 벅스 · LRCLIB · 매칭 점수
+│   ├── metadata_service.dart  # 곡별 앨범 커버 · 가사 매칭과 캐시
+│   ├── download_service.dart  # 선택 다운로드 (10 MB Range 분할)
+│   ├── music_service.dart     # 스트림 추출 (Android: NewPipe, iOS: yt-dlp, 공통 폴백: Dart)
 │   ├── player_service.dart    # 큐 · 셔플 · 반복 · 재생 상태
 │   ├── library_service.dart   # 좋아요 · 기록 · 플레이리스트 (변경 시 UI 갱신)
 │   ├── storage_service.dart   # SharedPreferences 영속성
@@ -113,7 +120,8 @@ flutter build apk --release
 ## 테스트
 
 ```bash
-flutter test                                   # 보관함 로직 · 커버플로우 · 전체 화면 스모크 테스트
+flutter test                                   # 보관함 · 커버플로우 · 엔진 파서/매칭 · 다운로드 · 전체 화면
+DRIZON_LIVE=1 flutter test test/live_engines_test.dart   # 실제 YouTube Music · 벅스 · LRCLIB 호출
 DRIZON_SHOT_DIR=/tmp/shots flutter test       # 각 화면을 PNG로도 저장 (레이아웃 확인용)
 
 python3 -m unittest discover -s ios/PythonApp/tests -v   # Python 레이어 (setup 후)
@@ -125,6 +133,8 @@ python3 -m unittest discover -s ios/PythonApp/tests -v   # Python 레이어 (set
 
 - **App Store 배포는 어렵습니다.** YouTube 오디오를 추출해 재생하는 방식은 YouTube 약관과 충돌하므로
   개인용 사이드로드(Xcode 직접 설치)를 전제로 합니다. 무료 Apple ID는 7일마다 재서명이 필요합니다.
+- YouTube Music · 벅스는 비공식 경로라 서비스 쪽 변경으로 검색 · 가사가 깨질 수 있습니다.
+- Android 빌드는 GPL-3.0인 NewPipe Extractor를 포함합니다 ([오픈소스 문서](docs/OPEN_SOURCE.md) 참고).
 - YouTube 측 변경으로 추출이 깨질 수 있습니다. iOS는 설정의 *yt-dlp 업데이트*로 대응합니다.
 - 앱 프로세스 안의 JavaScriptCore는 JIT 없이 돌아서, 영상마다 첫 재생 시 챌린지 해독에 시간이 더 걸릴 수 있습니다.
 - iOS 코드(Swift/Python 내장)는 Linux 개발 환경에서 작성되어 **실제 기기에서의 빌드 · 실행은 아직 검증되지 않았습니다.**
