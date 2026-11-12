@@ -27,6 +27,8 @@ flowchart LR
 | 영역 | 구현 |
 | --- | --- |
 | 화면 | [ui/](../lib/ui/)가 탭(지금 듣기 · 비디오 · 보관함 · 검색), 미니 플레이어, 지금 재생 중 화면, 영상 플레이어를 그립니다. 보관함의 [커버 플로우](../lib/ui/widgets/cover_flow.dart)는 하나의 위치 값으로 모든 커버의 회전·크기·반사를 계산하고, 가운데 커버를 마지막에 그려 항상 위에 둡니다. |
+| 디자인 | [Liquid Glass](../lib/ui/glass/liquid_glass.dart): 뒤 콘텐츠를 블러하고 채도를 높여 색이 비치게 하고, 윗면 반사광과 두 방향 림 라이트, 연속 곡률(스쿼클) 모서리를 그립니다. 탭바와 미니 플레이어는 화면 위에 떠 있어 콘텐츠가 그 아래로 스크롤됩니다. 누르면 스프링으로 눌렸다 돌아오고, 탭바 선택 표시는 이동 속도만큼 늘어났다가 출렁이며 자리를 잡습니다. 탭 전환은 확대와 페이드, 미니 플레이어의 커버는 Hero로 지금 재생 화면에 이어집니다. 지금 재생 배경은 블러한 커버 두 겹이 천천히 돌며 움직이고, 가사는 현재 줄을 키우고 나머지를 흐리게 합니다. |
+| 로고 | [DrizonLogo](../lib/ui/brand/drizon_logo.dart)는 에이투지체(굵은 "Drizon", 가벼운 "Music")로 쓰고 "o"를 [LP판](../lib/ui/brand/vinyl_record.dart)으로 그립니다. 폰트 파일을 넣기 전에는 시스템 고딕으로 표시됩니다. 판은 재생 중 33⅓ RPM으로 돌고 관성처럼 가속·감속하며, 반사광은 따로 그려 회전하지 않습니다. |
 | 상태 | `provider`의 ChangeNotifier들이 재생([PlayerService](../lib/services/player_service.dart)), 보관함([LibraryService](../lib/services/library_service.dart)), 커버·가사([MetadataService](../lib/services/metadata_service.dart)), 다운로드([DownloadService](../lib/services/download_service.dart))를 나눠 맡습니다. 화면은 `context.select`로 필요한 값만 구독해, 재생 위치가 바뀔 때 전체가 다시 그려지지 않습니다. |
 | 저장 | 좋아요, 기록, 플레이리스트, 재생 상태, 설정, 곡별 매칭 결과, 다운로드 목록을 SharedPreferences에 JSON으로 저장합니다. |
 

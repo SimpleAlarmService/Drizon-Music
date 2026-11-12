@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -137,7 +139,20 @@ class _Line extends StatelessWidget {
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 9),
-        child: AnimatedDefaultTextStyle(
+        child: TweenAnimationBuilder<double>(
+          // Apple Music–style depth: the sung line comes forward, others soften.
+          tween: Tween(end: current ? 0 : 1),
+          duration: const Duration(milliseconds: 420),
+          curve: Curves.easeOutCubic,
+          builder: (context, t, child) => Transform.scale(
+            scale: 1 - 0.05 * t,
+            alignment: Alignment.centerLeft,
+            child: ImageFiltered(
+              imageFilter: ImageFilter.blur(sigmaX: 1.1 * t, sigmaY: 1.1 * t),
+              child: child,
+            ),
+          ),
+          child: AnimatedDefaultTextStyle(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
           style: TextStyle(
@@ -149,6 +164,7 @@ class _Line extends StatelessWidget {
           ),
           // Blank LRC lines mark instrumental breaks.
           child: Text(text.isEmpty ? '•••' : text),
+        ),
         ),
       ),
     );

@@ -7,7 +7,8 @@ import '../../services/player_service.dart';
 import '../../theme.dart';
 import '../widgets/actions.dart';
 import '../widgets/artwork.dart';
-import '../widgets/large_title.dart';
+import '../brand/drizon_logo.dart';
+import '../glass/liquid_glass.dart';
 import 'settings_page.dart';
 
 /// "지금 듣기": resume card plus shelves of recent and liked songs.
@@ -23,16 +24,30 @@ class HomePage extends StatelessWidget {
     final liked = library.liked;
 
     return ListView(
-      padding: const EdgeInsets.only(bottom: 24),
+      padding: EdgeInsets.only(bottom: 24 + ShellInsets.of(context)),
       children: [
-        LargeTitle(
-          '지금 듣기',
-          trailing: IconButton(
-            icon: Icon(CupertinoIcons.person_crop_circle,
-                size: 30, color: kAccent),
-            onPressed: () => Navigator.of(context).push(
-                CupertinoPageRoute<void>(builder: (_) => const SettingsPage())),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 6, 16, 4),
+          child: Row(
+            children: [
+              const Expanded(
+                child: FadeSlideIn(
+                  child: Align(alignment: Alignment.centerLeft, child: DrizonLogo(fontSize: 36)),
+                ),
+              ),
+              GlassButton(
+                icon: CupertinoIcons.person_fill,
+                size: 40,
+                color: kAccent,
+                onTap: () => Navigator.of(context).push(
+                    CupertinoPageRoute<void>(builder: (_) => const SettingsPage())),
+              ),
+            ],
           ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+          child: Text('지금 듣기', style: Type.title(pal).copyWith(fontSize: 26)),
         ),
         if (history.isEmpty && liked.isEmpty)
           _EmptyState(onSearch: onSearch)
@@ -42,7 +57,6 @@ class HomePage extends StatelessWidget {
             _Shelf(title: '최근 재생', tracks: history),
           if (liked.isNotEmpty) _Shelf(title: '좋아요 표시한 곡', tracks: liked),
         ],
-        SizedBox(height: 8, child: Divider(color: pal.separator.withValues(alpha: 0))),
       ],
     );
   }
@@ -87,7 +101,8 @@ class _Featured extends StatelessWidget {
     final pal = context.pal;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-      child: GestureDetector(
+      child: GlassPressable(
+        depth: 0.03,
         onTap: () => context.read<PlayerService>().playTrack(track, queue: queue, index: 0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -106,13 +121,14 @@ class _Featured extends StatelessWidget {
                 Positioned(
                   left: 12,
                   bottom: 12,
-                  child: Container(
-                    width: 44,
-                    height: 44,
-                    decoration: const BoxDecoration(
-                        color: Colors.white, shape: BoxShape.circle),
-                    child: const Icon(CupertinoIcons.play_fill,
-                        color: Colors.black, size: 22),
+                  child: IgnorePointer(
+                    child: GlassButton(
+                      icon: CupertinoIcons.play_fill,
+                      size: 48,
+                      color: Colors.white,
+                      tint: Colors.white.withValues(alpha: 0.12),
+                      onTap: () {},
+                    ),
                   ),
                 ),
               ],
@@ -154,7 +170,10 @@ class _Shelf extends StatelessWidget {
             separatorBuilder: (_, _) => const SizedBox(width: 14),
             itemBuilder: (context, i) {
               final t = tracks[i];
-              return GestureDetector(
+              return FadeSlideIn(
+                index: i,
+                child: GlassPressable(
+                depth: 0.05,
                 onTap: () => context
                     .read<PlayerService>()
                     .playTrack(t, queue: tracks, index: i),
@@ -177,6 +196,7 @@ class _Shelf extends StatelessWidget {
                     ],
                   ),
                 ),
+              ),
               );
             },
           ),

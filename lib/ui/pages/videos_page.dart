@@ -6,6 +6,7 @@ import '../../services/download_service.dart';
 import '../../services/engines/ytmusic_client.dart';
 import '../../services/library_service.dart';
 import '../../theme.dart';
+import '../glass/liquid_glass.dart';
 import '../widgets/large_title.dart';
 import '../widgets/video_widgets.dart';
 import 'video_player_page.dart';
@@ -90,14 +91,20 @@ class _VideosPageState extends State<VideosPage> {
         const LargeTitle('비디오'),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-          child: CupertinoSearchTextField(
-            controller: _controller,
-            placeholder: '아티스트, 곡, 무대',
-            onSubmitted: _submit,
-            onSuffixTap: () {
-              _controller.clear();
-              _submit('');
-            },
+          child: LiquidGlass(
+            borderRadius: const BorderRadius.all(Radius.circular(16)),
+            shadow: false,
+            child: CupertinoSearchTextField(
+              controller: _controller,
+              placeholder: '아티스트, 곡, 무대',
+              backgroundColor: Colors.transparent,
+              padding: const EdgeInsetsDirectional.fromSTEB(8, 12, 8, 12),
+              onSubmitted: _submit,
+              onSuffixTap: () {
+                _controller.clear();
+                _submit('');
+              },
+            ),
           ),
         ),
         SizedBox(
@@ -137,11 +144,11 @@ class _VideosPageState extends State<VideosPage> {
           final items = snap.data ?? const [];
           if (items.isEmpty) return const _Message('결과가 없어요');
           return ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+            padding: EdgeInsets.fromLTRB(16, 4, 16, 24 + ShellInsets.of(context)),
             itemCount: items.length,
-            itemBuilder: (context, i) => _VideoTile(
-              item: items[i],
-              onTap: () => _open(items[i]),
+            itemBuilder: (context, i) => FadeSlideIn(
+              index: i,
+              child: _VideoTile(item: items[i], onTap: () => _open(items[i])),
             ),
           );
         },
@@ -155,7 +162,7 @@ class _VideosPageState extends State<VideosPage> {
     final ytm = context.read<YtmClient>();
     final category = _category == VideoCategory.all ? VideoCategory.mv : _category;
     return ListView(
-      padding: const EdgeInsets.only(bottom: 24),
+      padding: EdgeInsets.only(bottom: 24 + ShellInsets.of(context)),
       children: [
         for (final artist in artists)
           _Shelf(
@@ -174,7 +181,7 @@ class _VideosPageState extends State<VideosPage> {
       return const _Message('영상의 다운로드 버튼으로 받으면 여기서 오프라인으로 볼 수 있어요');
     }
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+      padding: EdgeInsets.fromLTRB(16, 4, 16, 24 + ShellInsets.of(context)),
       itemCount: videos.length,
       itemBuilder: (context, i) => _VideoTile(
         item: videos[i].item,
@@ -196,8 +203,8 @@ class _VideoTile extends StatelessWidget {
     final pal = context.pal;
     return Padding(
       padding: const EdgeInsets.only(bottom: 18),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
+      child: GlassPressable(
+        depth: 0.025,
         onTap: onTap,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -267,7 +274,8 @@ class _Shelf extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemCount: items.length,
                 separatorBuilder: (_, _) => const SizedBox(width: 12),
-                itemBuilder: (context, i) => GestureDetector(
+                itemBuilder: (context, i) => GlassPressable(
+                  depth: 0.04,
                   onTap: () => onOpen(items[i]),
                   onLongPress: () => showVideoDownloadSheet(context, items[i]),
                   child: SizedBox(
@@ -291,6 +299,7 @@ class _Shelf extends StatelessWidget {
   }
 }
 
+/// Glass chip; the selected one fills with accent-tinted glass.
 class _Chip extends StatelessWidget {
   const _Chip({required this.label, required this.selected, required this.onTap});
   final String label;
@@ -300,21 +309,29 @@ class _Chip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pal = context.pal;
-    return GestureDetector(
+    return GlassPressable(
+      depth: 0.08,
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selected ? kAccent : pal.surfaceHigh,
-          borderRadius: BorderRadius.circular(17),
+      builder: (context, press, child) => TweenAnimationBuilder<double>(
+        tween: Tween(end: selected ? 1 : 0),
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOutCubic,
+        builder: (context, t, _) => LiquidGlass.capsule(
+          shadow: false,
+          highlight: 1 + press * 0.5,
+          tint: Color.lerp(pal.label.withValues(alpha: 0.04), kAccent.withValues(alpha: 0.78), t),
+          child: child,
         ),
-        child: Text(label,
-            style: TextStyle(
-                color: selected ? Colors.white : pal.label,
-                fontSize: 14,
-                fontWeight: FontWeight.w600)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 15),
+        child: Center(
+          child: Text(label,
+              style: TextStyle(
+                  color: selected ? Colors.white : pal.label,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600)),
+        ),
       ),
     );
   }

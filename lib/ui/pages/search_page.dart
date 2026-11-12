@@ -8,6 +8,7 @@ import '../../services/music_service.dart';
 import '../../services/player_service.dart';
 import '../../theme.dart';
 import '../widgets/actions.dart';
+import '../glass/liquid_glass.dart';
 import '../widgets/large_title.dart';
 import '../widgets/track_row.dart';
 
@@ -100,16 +101,22 @@ class _SearchPageState extends State<SearchPage> {
         const Align(alignment: Alignment.centerLeft, child: LargeTitle('검색')),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          child: CupertinoSearchTextField(
-            controller: _controller,
-            focusNode: _focus,
-            placeholder: '아티스트, 노래, 앨범',
-            onChanged: _onChanged,
-            onSubmitted: _search,
-            onSuffixTap: () {
-              _controller.clear();
-              _search('');
-            },
+          child: LiquidGlass(
+            borderRadius: const BorderRadius.all(Radius.circular(16)),
+            shadow: false,
+            child: CupertinoSearchTextField(
+              controller: _controller,
+              focusNode: _focus,
+              placeholder: '아티스트, 노래, 앨범',
+              backgroundColor: Colors.transparent,
+              padding: const EdgeInsetsDirectional.fromSTEB(8, 12, 8, 12),
+              onChanged: _onChanged,
+              onSubmitted: _search,
+              onSuffixTap: () {
+                _controller.clear();
+                _search('');
+              },
+            ),
           ),
         ),
         Expanded(child: _typing ? _suggestionList() : _body()),
@@ -121,6 +128,7 @@ class _SearchPageState extends State<SearchPage> {
     final pal = context.pal;
     return ListView.builder(
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      padding: EdgeInsets.only(bottom: ShellInsets.of(context)),
       itemCount: _suggestions.length,
       itemBuilder: (context, i) => ListTile(
         leading: Icon(CupertinoIcons.search, color: pal.secondaryLabel, size: 20),
@@ -152,14 +160,18 @@ class _SearchPageState extends State<SearchPage> {
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
           child: Text(title, style: Type.title(pal).copyWith(fontSize: 20)),
         );
-    Widget row(Track t, List<Track> queue, int i) => TrackRow(
-          track: t,
-          onTap: () => player.playTrack(t, queue: queue, index: i),
-          onMore: () => showTrackActions(context, t),
+    Widget row(Track t, List<Track> queue, int i) => FadeSlideIn(
+          index: i,
+          child: TrackRow(
+            track: t,
+            onTap: () => player.playTrack(t, queue: queue, index: i),
+            onMore: () => showTrackActions(context, t),
+          ),
         );
 
     return ListView(
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      padding: EdgeInsets.only(bottom: ShellInsets.of(context)),
       children: [
         if (songs.isNotEmpty) ...[
           section('노래'),

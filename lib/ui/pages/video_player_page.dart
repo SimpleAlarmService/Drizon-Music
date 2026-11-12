@@ -12,6 +12,7 @@ import '../../services/download_service.dart';
 import '../../services/engines/ytmusic_client.dart';
 import '../../services/music_service.dart';
 import '../../services/player_service.dart';
+import '../glass/liquid_glass.dart';
 import '../widgets/video_widgets.dart';
 
 /// Plays a music video / stage / fancam: from disk when downloaded, otherwise
@@ -315,25 +316,27 @@ class _Action extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Material(
-        color: Colors.white12,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: SizedBox(
-            height: 46,
-            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Icon(icon, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-              ),
-            ]),
-          ),
+  Widget build(BuildContext context) => GlassPressable(
+        depth: 0.05,
+        onTap: onTap,
+        builder: (context, press, child) => LiquidGlass(
+          borderRadius: const BorderRadius.all(Radius.circular(16)),
+          shadow: false,
+          highlight: 1 + press * 0.5,
+          child: child,
+        ),
+        child: SizedBox(
+          height: 48,
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(icon, color: Colors.white, size: 20),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+            ),
+          ]),
         ),
       );
 }

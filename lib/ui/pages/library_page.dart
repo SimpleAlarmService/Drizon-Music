@@ -8,6 +8,7 @@ import '../../theme.dart';
 import '../widgets/actions.dart';
 import '../widgets/artwork.dart';
 import '../widgets/cover_flow.dart';
+import '../glass/liquid_glass.dart';
 import '../widgets/large_title.dart';
 import '../widgets/track_row.dart';
 
@@ -85,13 +86,15 @@ class _LibraryPageState extends State<LibraryPage> {
     final player = context.read<PlayerService>();
 
     return ListView(
-      padding: const EdgeInsets.only(bottom: 24),
+      padding: EdgeInsets.only(bottom: 24 + ShellInsets.of(context)),
       children: [
         LargeTitle(
           '보관함',
-          trailing: IconButton(
-            icon: const Icon(CupertinoIcons.add, color: kAccent, size: 28),
-            onPressed: () => _createPlaylist(collections.length),
+          trailing: GlassButton(
+            icon: CupertinoIcons.add,
+            size: 40,
+            color: kAccent,
+            onTap: () => _createPlaylist(collections.length),
           ),
         ),
         const SizedBox(height: 12),
@@ -105,16 +108,29 @@ class _LibraryPageState extends State<LibraryPage> {
           onTapCenter: (i) => _play(collections[i]),
         ),
         const SizedBox(height: 4),
-        Text(
-          selected.title,
-          textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Type.title(pal),
+        // Title cross-fades as the Cover Flow settles on a new collection.
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 250),
+          transitionBuilder: (c, a) => FadeTransition(
+            opacity: a,
+            child: ScaleTransition(scale: Tween(begin: 0.96, end: 1.0).animate(a), child: c),
+          ),
+          child: Column(
+            key: ValueKey(selected.id),
+            children: [
+              Text(
+                selected.title,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Type.title(pal),
+              ),
+              const SizedBox(height: 4),
+              Text('곡 ${selected.tracks.length}개',
+                  textAlign: TextAlign.center, style: Type.sub(pal)),
+            ],
+          ),
         ),
-        const SizedBox(height: 4),
-        Text('곡 ${selected.tracks.length}개',
-            textAlign: TextAlign.center, style: Type.sub(pal)),
         const SizedBox(height: 16),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -163,8 +179,10 @@ class _LibraryPageState extends State<LibraryPage> {
           )
         else
           for (var i = 0; i < selected.tracks.length; i++)
-            TrackRow(
+            FadeSlideIn(
               key: ValueKey('${selected.id}:${selected.tracks[i].videoId}'),
+              index: i,
+              child: TrackRow(
               track: selected.tracks[i],
               onTap: () {
                 if (player.shuffleEnabled) player.toggleShuffle();
@@ -173,6 +191,7 @@ class _LibraryPageState extends State<LibraryPage> {
               },
               onMore: () => showTrackActions(context, selected.tracks[i],
                   fromPlaylist: selected.playlist),
+            ),
             ),
       ],
     );
@@ -186,32 +205,6 @@ class _PillButton extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    final pal = context.pal;
-    return Material(
-      color: pal.surfaceHigh,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Container(
-          height: 46,
-          padding: label == null ? const EdgeInsets.symmetric(horizontal: 18) : null,
-          alignment: Alignment.center,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: kAccent, size: 20),
-              if (label != null) ...[
-                const SizedBox(width: 8),
-                Text(label!,
-                    style: const TextStyle(
-                        color: kAccent, fontSize: 17, fontWeight: FontWeight.w600)),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) =>
+      GlassButton(icon: icon, label: label, size: 48, color: kAccent, iconSize: 20, onTap: onTap);
 }

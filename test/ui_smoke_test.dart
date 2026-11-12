@@ -339,7 +339,7 @@ void main() {
     // Settings from the home tab
     await tester.tap(find.byIcon(CupertinoIcons.play_circle_fill));
     await settle(tester);
-    await tester.tap(find.byIcon(CupertinoIcons.person_crop_circle));
+    await tester.tap(find.byIcon(CupertinoIcons.person_fill));
     await settle(tester);
     await shot(tester, 'ui_settings');
 
