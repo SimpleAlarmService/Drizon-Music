@@ -33,12 +33,17 @@ class DrizonLogo extends StatelessWidget {
       height: 1.1,
       color: ink,
       fontWeight: FontWeight.w800,
-      letterSpacing: -fontSize * 0.03,
+      letterSpacing: 0,
     );
     final light = style.copyWith(fontWeight: FontWeight.w400, letterSpacing: -fontSize * 0.01);
-    // The record sits on the baseline, a touch taller than the x-height so it
-    // reads as a record rather than a dot.
-    final record = fontSize * 0.60;
+    // The record takes the exact place of A2Z ExtraBold's "o" (font units /
+    // em): it spans -0.089..0.528 vertically (A2Z letters sit a little below
+    // the baseline) and is centred in the glyph's 0.672 advance, so its top
+    // and bottom line up with "n" and "z" including the round overshoot.
+    const oTop = 0.528, oBottom = -0.089, oAdvance = 0.672;
+    final record = fontSize * (oTop - oBottom);
+    final side = fontSize * (oAdvance - (oTop - oBottom)) / 2;
+    final drop = -oBottom * fontSize;
 
     return Semantics(
       label: 'Drizon Music',
@@ -51,8 +56,12 @@ class DrizonLogo extends StatelessWidget {
               alignment: PlaceholderAlignment.aboveBaseline,
               baseline: TextBaseline.alphabetic,
               child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: fontSize * 0.035),
-                child: VinylRecord(size: record, spinning: playing),
+                padding: EdgeInsets.symmetric(horizontal: side),
+                // Placed bottom-on-baseline, then lowered to the letters' bottom.
+                child: Transform.translate(
+                  offset: Offset(0, drop),
+                  child: VinylRecord(size: record, spinning: playing),
+                ),
               ),
             ),
             const TextSpan(text: 'n '),

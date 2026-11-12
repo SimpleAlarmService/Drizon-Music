@@ -87,6 +87,8 @@ class _VinylRecordState extends State<VinylRecord> with SingleTickerProviderStat
   }
 }
 
+/// Flat, simple record: black disc, two faint grooves, red label, a small dot
+/// on the label (so the spin is visible) and the spindle hole.
 class _DiscPainter extends CustomPainter {
   const _DiscPainter(this.label);
   final Color label;
@@ -96,73 +98,26 @@ class _DiscPainter extends CustomPainter {
     final c = size.center(Offset.zero);
     final r = size.shortestSide / 2;
 
-    // Vinyl body.
-    canvas.drawCircle(
-      c,
-      r,
-      Paint()
-        ..shader = const RadialGradient(
-          colors: [Color(0xFF2A2A2E), Color(0xFF111114), Color(0xFF050506)],
-          stops: [0.0, 0.7, 1.0],
-        ).createShader(Rect.fromCircle(center: c, radius: r)),
-    );
+    canvas.drawCircle(c, r, Paint()..color = const Color(0xFF141416));
 
-    // Grooves: fine rings, slightly uneven like a pressed record.
     final groove = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = math.max(0.35, r * 0.006);
-    for (var gr = r * 0.40; gr < r * 0.95; gr += r * 0.032) {
-      final t = (gr / r * 37).floor() % 3;
-      groove.color = Colors.white.withValues(alpha: t == 0 ? 0.10 : 0.05);
-      canvas.drawCircle(c, gr, groove);
-    }
-    // Lead-in and run-out edges.
-    canvas.drawCircle(
-        c,
-        r * 0.985,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = r * 0.02
-          ..color = Colors.white.withValues(alpha: 0.08));
+      ..strokeWidth = math.max(0.5, r * 0.035)
+      ..color = Colors.white.withValues(alpha: 0.13);
+    canvas.drawCircle(c, r * 0.80, groove);
+    canvas.drawCircle(c, r * 0.62, groove);
 
-    // Label with a tiny printed mark so the rotation is visible.
-    final labelR = r * 0.34;
+    canvas.drawCircle(c, r * 0.40, Paint()..color = label);
     canvas.drawCircle(
-      c,
-      labelR,
-      Paint()
-        ..shader = RadialGradient(
-          colors: [Color.lerp(label, Colors.white, 0.18)!, label, Color.lerp(label, Colors.black, 0.25)!],
-          stops: const [0.0, 0.6, 1.0],
-        ).createShader(Rect.fromCircle(center: c, radius: labelR)),
-    );
-    canvas.drawCircle(
-        c,
-        labelR * 0.78,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = math.max(0.4, r * 0.008)
-          ..color = Colors.white.withValues(alpha: 0.35));
-    canvas.drawArc(
-        Rect.fromCircle(center: c, radius: labelR * 0.55),
-        -math.pi * 0.85,
-        math.pi * 0.5,
-        false,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeCap = StrokeCap.round
-          ..strokeWidth = math.max(0.6, r * 0.03)
-          ..color = Colors.white.withValues(alpha: 0.85));
-
-    // Spindle hole.
-    canvas.drawCircle(c, r * 0.045, Paint()..color = const Color(0xFF0B0B0D));
+        c + Offset(0, -r * 0.26), math.max(0.6, r * 0.055), Paint()..color = Colors.white);
+    canvas.drawCircle(c, math.max(0.6, r * 0.07), Paint()..color = const Color(0xFF141416));
   }
 
   @override
   bool shouldRepaint(_DiscPainter old) => old.label != label;
 }
 
-/// Light reflected off the grooves: two opposite soft wedges plus a rim light.
+/// A single soft highlight that stays put while the record turns.
 class _SheenPainter extends CustomPainter {
   const _SheenPainter();
 
@@ -170,40 +125,17 @@ class _SheenPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final c = size.center(Offset.zero);
     final r = size.shortestSide / 2;
-    final rect = Rect.fromCircle(center: c, radius: r);
-    canvas.save();
-    canvas.clipPath(Path()
-      ..addOval(rect)
-      ..addOval(Rect.fromCircle(center: c, radius: r * 0.35))
-      ..fillType = PathFillType.evenOdd);
-    canvas.drawCircle(
-      c,
-      r,
+    canvas.drawArc(
+      Rect.fromCircle(center: c, radius: r * 0.71),
+      -math.pi * 0.92,
+      math.pi * 0.34,
+      false,
       Paint()
-        ..shader = SweepGradient(
-          colors: [
-            Colors.white.withValues(alpha: 0.0),
-            Colors.white.withValues(alpha: 0.22),
-            Colors.white.withValues(alpha: 0.0),
-            Colors.white.withValues(alpha: 0.0),
-            Colors.white.withValues(alpha: 0.14),
-            Colors.white.withValues(alpha: 0.0),
-          ],
-          stops: const [0.02, 0.10, 0.20, 0.52, 0.60, 0.70],
-        ).createShader(rect),
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = math.max(0.6, r * 0.09)
+        ..color = Colors.white.withValues(alpha: 0.22),
     );
-    canvas.restore();
-    canvas.drawCircle(
-        c,
-        r - 0.5,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1
-          ..shader = LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Colors.white.withValues(alpha: 0.35), Colors.white.withValues(alpha: 0.02)],
-          ).createShader(rect));
   }
 
   @override
