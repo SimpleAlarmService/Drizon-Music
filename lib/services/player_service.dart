@@ -42,6 +42,9 @@ class PlayerService extends ChangeNotifier {
   /// Path of an offline copy, if the user downloaded this track.
   String? Function(String videoId)? localFileFor;
 
+  /// Saved cover of a downloaded track (lock screen art that works offline).
+  String? Function(String videoId)? localCoverFor;
+
   // ── Constructor ──────────────────────────────────────────────────────────────
 
   PlayerService(this._music, this._storage, this._settings) {
@@ -143,7 +146,10 @@ class PlayerService extends ChangeNotifier {
         album: track.album ?? 'Drizon',
         title: track.title,
         artist: track.artist,
-        artUri: Uri.parse(track.albumArt ?? track.thumbnail),
+        artUri: switch (localCoverFor?.call(track.videoId)) {
+          final String cover => Uri.file(cover),
+          _ => Uri.parse(track.albumArt ?? track.thumbnail),
+        },
       );
       final local = localFileFor?.call(track.videoId);
       if (local != null) {

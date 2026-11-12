@@ -19,6 +19,7 @@
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
+		B40FBEDF465C9AF0651AA733 /* VideoMuxer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A8E06D5654AB642BAF90178 /* VideoMuxer.swift */; };
 		BC3BB57B97E76DDCD8D1C86E /* app_packages in Resources */ = {isa = PBXBuildFile; fileRef = 3D6609462346A9CBABAD0CB3 /* app_packages */; };
 		FC7B9DC859C81C266615D418 /* ExtractorChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D090815F1370EE78946C9C5 /* ExtractorChannel.swift */; };
 /* End PBXBuildFile section */
@@ -56,6 +57,7 @@
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
 		3D6609462346A9CBABAD0CB3 /* app_packages */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder; name = app_packages; path = PythonApp/app_packages; sourceTree = "<group>"; };
 		3EBD5387235012E8C1379219 /* app */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder; name = app; path = PythonApp/app; sourceTree = "<group>"; };
+		4A8E06D5654AB642BAF90178 /* VideoMuxer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VideoMuxer.swift; sourceTree = "<group>"; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
@@ -138,6 +140,7 @@
 				DAE6766618BC2A5E48FE7D42 /* PythonRuntime.swift */,
 				CDABF7E568FD1E833FA9F411 /* JSSolver.swift */,
 				8D090815F1370EE78946C9C5 /* ExtractorChannel.swift */,
+				4A8E06D5654AB642BAF90178 /* VideoMuxer.swift */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -316,6 +319,7 @@
 				423119E05D0607088CA5B947 /* PythonRuntime.swift in Sources */,
 				734362161DBF299873E9D7B8 /* JSSolver.swift in Sources */,
 				FC7B9DC859C81C266615D418 /* ExtractorChannel.swift in Sources */,
+				B40FBEDF465C9AF0651AA733 /* VideoMuxer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

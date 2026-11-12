@@ -52,11 +52,15 @@ void main() async {
       directory: getApplicationDocumentsDirectory);
   await downloads.init();
 
+  metadata.offline = downloads;
+  downloads.onDownloaded = metadata.saveOffline;
+
   final library = LibraryService(storage, downloads: downloads);
   final player = PlayerService(music, storage, settings)
     ..onHistoryChanged = library.historyChanged
     ..onTrackStarted = metadata.prefetch
-    ..localFileFor = downloads.localPath;
+    ..localFileFor = downloads.localPath
+    ..localCoverFor = downloads.localCover;
   await player.restoreState();
 
   runApp(

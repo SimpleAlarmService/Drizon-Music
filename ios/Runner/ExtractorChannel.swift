@@ -15,6 +15,27 @@ enum ExtractorChannel {
                 send(streamRequest(args), result) { ($0 as? [String: Any])?["url"] }
             case "getStreamInfo":
                 send(streamRequest(args), result) { $0 }
+            case "getVideoStreams":
+                send(["op": "video",
+                      "videoId": args["videoId"] ?? "",
+                      "clientType": args["clientType"] ?? "ANDROID"], result) { $0 }
+            case "muxVideo":
+                guard let video = args["video"] as? String,
+                      let audio = args["audio"] as? String,
+                      let output = args["output"] as? String else {
+                    return result(FlutterError(code: "ARGS", message: "video, audio and output paths required", details: nil))
+                }
+                VideoMuxer.mux(video: URL(fileURLWithPath: video),
+                               audio: URL(fileURLWithPath: audio),
+                               output: URL(fileURLWithPath: output)) { error in
+                    DispatchQueue.main.async {
+                        if let error {
+                            result(FlutterError(code: "MUX", message: error.localizedDescription, details: nil))
+                        } else {
+                            result(output)
+                        }
+                    }
+                }
             case "updateExtractor":
                 send(["op": "update"], result) { $0 }
             case "extractorVersion":

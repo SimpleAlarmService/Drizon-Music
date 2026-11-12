@@ -13,6 +13,20 @@ class Lyrics {
   const Lyrics({this.synced = const [], this.plain});
 
   bool get isSynced => synced.isNotEmpty;
+
+  Map<String, dynamic> toJson() => {
+        if (synced.isNotEmpty)
+          'synced': [for (final l in synced) [l.time.inMilliseconds, l.text]],
+        if (plain != null) 'plain': plain,
+      };
+
+  factory Lyrics.fromJson(Map<String, dynamic> j) => Lyrics(
+        synced: [
+          for (final l in (j['synced'] as List?) ?? const [])
+            LyricLine(Duration(milliseconds: (l[0] as num).toInt()), l[1] as String),
+        ],
+        plain: j['plain'] as String?,
+      );
   bool get isEmpty => synced.isEmpty && (plain == null || plain!.trim().isEmpty);
 
   /// Bugs synced format: "0.3|first line＃8.9|second line＃…" (full-width ＃).

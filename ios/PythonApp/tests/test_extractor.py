@@ -39,6 +39,30 @@ class HandleContract(unittest.TestCase):
             self.assertTrue(fmt.startswith(('bestaudio[ext=m4a]', 'worstaudio[ext=m4a]')))
 
 
+class VideoFormats(unittest.TestCase):
+    INFO = {
+        'http_headers': {'User-Agent': 'UA'},
+        'title': 'MV', 'duration': 215.4,
+        'formats': [
+            {'format_id': 'sb0', 'protocol': 'mhtml', 'url': 'x', 'vcodec': 'none', 'acodec': 'none'},
+            {'protocol': 'https', 'url': 'a', 'ext': 'm4a', 'vcodec': 'none', 'acodec': 'mp4a.40.2', 'abr': 129.5},
+            {'protocol': 'https', 'url': 'm', 'ext': 'mp4', 'vcodec': 'avc1.42001E', 'acodec': 'mp4a.40.2', 'height': 360, 'tbr': 500},
+            {'protocol': 'https', 'url': 'v', 'ext': 'mp4', 'vcodec': 'avc1.640028', 'acodec': 'none', 'height': 1080, 'tbr': 2500},
+            {'protocol': 'm3u8_native', 'url': 'variant', 'manifest_url': 'master.m3u8', 'vcodec': 'avc1', 'acodec': 'mp4a'},
+        ],
+    }
+
+    def test_normalised(self):
+        out = extractor._video_formats(self.INFO)
+        self.assertEqual(out['hls'], 'master.m3u8')
+        self.assertEqual(out['headers'], {'User-Agent': 'UA'})
+        self.assertEqual(out['durationSec'], 215)
+        self.assertEqual([f['kind'] for f in out['formats']], ['audio', 'muxed', 'video'])
+        video = out['formats'][2]
+        self.assertEqual((video['height'], video['vcodec'], video['acodec']), (1080, 'avc1.640028', ''))
+        self.assertEqual(out['formats'][0]['bitrate'], 129500)
+
+
 class JavaScriptCoreProvider(unittest.TestCase):
     def test_registered(self):
         self.assertIn('JavaScriptCore', _jsc_providers.value)

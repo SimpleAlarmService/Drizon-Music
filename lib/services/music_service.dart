@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import '../models/track.dart';
 import '../models/settings_model.dart';
+import '../models/video_streams.dart';
 import 'engines/ytmusic_client.dart';
 
 /// Abstract music service: search tracks + resolve audio stream URL.
@@ -18,6 +19,13 @@ abstract class MusicService {
 
   /// Stream URL plus the HTTP headers the player must send with it.
   Future<StreamInfo> getStreamInfo(String videoId);
+
+  /// Every format of a video (for watching and downloading music videos,
+  /// stages, fancams…).
+  Future<VideoStreams> getVideoStreams(String videoId);
+
+  /// Joins a video-only file and an audio file into [output] (MP4, no re-encode).
+  Future<void> muxVideo(String video, String audio, String output);
 
   /// iOS only: download the newest yt-dlp (applied on next launch).
   /// Returns a human-readable status line.
@@ -58,6 +66,11 @@ class _YtmSearchFirst implements MusicService {
   Future<String> getStreamUrl(String videoId) => _inner.getStreamUrl(videoId);
   @override
   Future<StreamInfo> getStreamInfo(String videoId) => _inner.getStreamInfo(videoId);
+  @override
+  Future<VideoStreams> getVideoStreams(String videoId) => _inner.getVideoStreams(videoId);
+  @override
+  Future<void> muxVideo(String video, String audio, String output) =>
+      _inner.muxVideo(video, audio, output);
   @override
   Future<String> updateExtractor() => _inner.updateExtractor();
   @override
@@ -172,6 +185,32 @@ class _NativeMusicService implements MusicService {
   }
 
   @override
+  Future<VideoStreams> getVideoStreams(String videoId) async {
+    if (!_skipNative) {
+      try {
+        final raw = await _ch.invokeMapMethod<String, dynamic>('getVideoStreams', {
+          'videoId': videoId,
+          'clientType': _clientType.value,
+        });
+        if (raw != null) {
+          final streams = VideoStreams.fromMap(raw);
+          if (streams.playbackUrl != null) return streams;
+        }
+      } catch (e) {
+        debugPrint('[MusicService] $_engine video error: $e');
+      }
+    }
+    if (_enableFallback || _skipNative) return _dartService.getVideoStreams(videoId);
+    throw Exception('Video unavailable');
+  }
+
+  @override
+  Future<void> muxVideo(String video, String audio, String output) async {
+    await _ch.invokeMethod<String>(
+        'muxVideo', {'video': video, 'audio': audio, 'output': output});
+  }
+
+  @override
   Future<String> updateExtractor() async {
     if (!Platform.isIOS) return 'Only available on iOS';
     final r = await _ch.invokeMapMethod<String, dynamic>('updateExtractor');
@@ -222,6 +261,47 @@ class _DartMusicService implements MusicService {
 
   @override
   Future<String> updateExtractor() async => 'Not supported by the Dart extractor';
+
+  @override
+  Future<VideoStreams> getVideoStreams(String videoId) async {
+    final m = await _yt.videos.streams.getManifest(videoId);
+    return VideoStreams(
+      headers: _defaultStreamHeaders,
+      formats: [
+        for (final s in m.muxed)
+          VideoFormat(
+            url: s.url.toString(),
+            kind: 'muxed',
+            ext: s.container.name,
+            height: s.videoResolution.height,
+            bitrate: s.bitrate.bitsPerSecond,
+            vcodec: s.videoCodec,
+            acodec: s.audioCodec,
+          ),
+        for (final s in m.videoOnly)
+          VideoFormat(
+            url: s.url.toString(),
+            kind: 'video',
+            ext: s.container.name,
+            height: s.videoResolution.height,
+            bitrate: s.bitrate.bitsPerSecond,
+            vcodec: s.videoCodec,
+          ),
+        for (final s in m.audioOnly)
+          VideoFormat(
+            url: s.url.toString(),
+            kind: 'audio',
+            ext: s.container.name == 'mp4' ? 'm4a' : s.container.name,
+            bitrate: s.bitrate.bitsPerSecond,
+            acodec: s.audioCodec,
+          ),
+      ],
+    );
+  }
+
+  @override
+  Future<void> muxVideo(String video, String audio, String output) =>
+      throw UnsupportedError('Muxing needs the native platform channel');
 
   @override
   Future<String> getStreamUrl(String videoId) async {

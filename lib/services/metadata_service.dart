@@ -10,6 +10,16 @@ import 'engines/lyrics.dart';
 import 'engines/matching.dart';
 import 'engines/ytmusic_client.dart';
 
+/// Where downloaded songs keep their cover and lyrics for offline use
+/// (implemented by DownloadService, next to the audio file).
+abstract class OfflineStore {
+  bool isDownloaded(String videoId);
+  Future<void> saveCover(String videoId, String url);
+  Future<String?> readLyrics(String videoId);
+  Future<void> writeLyrics(String videoId, String json);
+  Future<void> deleteLyrics(String videoId);
+}
+
 /// Lyrics lookup outcome for one track.
 class LyricsResult {
   final Lyrics? lyrics;
@@ -29,6 +39,22 @@ class LyricsResult {
   });
 
   bool get found => lyrics != null && !lyrics!.isEmpty;
+
+  Map<String, dynamic> toJson() => {
+        'lyrics': lyrics!.toJson(),
+        'provider': provider,
+        'sourceTitle': sourceTitle,
+        'sourceArtist': sourceArtist,
+        if (bugs != null) 'bugs': bugs!.toMap(),
+      };
+
+  factory LyricsResult.fromJson(Map<String, dynamic> j) => LyricsResult(
+        lyrics: Lyrics.fromJson(Map<String, dynamic>.from(j['lyrics'] as Map)),
+        provider: j['provider'] as String?,
+        sourceTitle: j['sourceTitle'] as String?,
+        sourceArtist: j['sourceArtist'] as String?,
+        bugs: j['bugs'] is Map ? BugsTrack.fromMap(j['bugs'] as Map) : null,
+      );
 }
 
 /// Album covers (YouTube Music) and lyrics (Bugs) matched to tracks.
@@ -51,6 +77,9 @@ class MetadataService extends ChangeNotifier {
   final _meta = <String, Map<String, dynamic>>{};
   final _artInFlight = <String>{};
   final _lyrics = <String, Future<LyricsResult>>{};
+
+  /// Offline copies of lyrics for downloaded tracks.
+  OfflineStore? offline;
 
   // ── Synchronous lookups for the UI ───────────────────────────────────────
 
@@ -102,10 +131,48 @@ class MetadataService extends ChangeNotifier {
 
   /// Memoised: the same Future is returned until the match changes.
   Future<LyricsResult> lyricsFor(Track t) =>
-      _lyrics[t.videoId] ??= _loadLyrics(t).then((r) {
+      _lyrics[t.videoId] ??= _lyricsWithOffline(t).then((r) {
         if (r.error != null) _lyrics.remove(t.videoId); // allow a retry later
         return r;
       });
+
+  /// Downloaded tracks read their saved lyrics first (works offline); a
+  /// successful online lookup for a downloaded track is saved for next time.
+  Future<LyricsResult> _lyricsWithOffline(Track t) async {
+    final store = offline;
+    final downloaded = store?.isDownloaded(t.videoId) ?? false;
+    if (downloaded) {
+      try {
+        final raw = await store!.readLyrics(t.videoId);
+        if (raw != null) {
+          final saved = LyricsResult.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+          if (saved.found) return saved;
+        }
+      } catch (e) {
+        debugPrint('[Metadata] unreadable offline lyrics for ${t.videoId}: $e');
+      }
+    }
+    final r = await _loadLyrics(t);
+    if (downloaded && r.found) {
+      try {
+        await store!.writeLyrics(t.videoId, jsonEncode(r.toJson()));
+      } catch (e) {
+        debugPrint('[Metadata] could not save offline lyrics for ${t.videoId}: $e');
+      }
+    }
+    return r;
+  }
+
+  /// Called when a song finishes downloading: store its cover and lyrics so
+  /// both work offline. The cover is YouTube Music's (matched first if needed).
+  Future<void> saveOffline(Track t) async {
+    await ensureArt(t);
+    _lyrics.remove(t.videoId); // re-run so the result gets written to disk
+    // Lyrics first: matching on Bugs may supply the fallback cover.
+    await lyricsFor(t);
+    final art = artFor(t) ?? 'https://i.ytimg.com/vi/${t.videoId}/hqdefault.jpg';
+    await offline?.saveCover(t.videoId, art);
+  }
 
   /// Bugs first (synced), then LRCLIB (synced). Plain lyrics found along the
   /// way are kept as a fallback while a synced version is still being looked for.
@@ -176,8 +243,10 @@ class MetadataService extends ChangeNotifier {
   Future<List<BugsTrack>> searchBugs(String query) => _bugs.search(query);
 
   /// User picked the right song in Bugs: remember it and reload lyrics.
-  void setLyricsSource(Track t, BugsTrack source) {
+  Future<void> setLyricsSource(Track t, BugsTrack source) async {
     _update(t.videoId, {'bugs': source.toMap(), 'bugsNone': false, 'bugsManual': true});
+    // The saved copy is the old choice; drop it so the new lyrics replace it.
+    await offline?.deleteLyrics(t.videoId);
     _lyrics.remove(t.videoId);
     notifyListeners();
   }

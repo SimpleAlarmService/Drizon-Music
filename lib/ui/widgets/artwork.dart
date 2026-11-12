@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../models/track.dart';
 import 'package:provider/provider.dart';
+import '../../services/download_service.dart';
 import '../../services/library_service.dart';
 import '../../services/metadata_service.dart';
 import '../../theme.dart';
@@ -37,6 +40,9 @@ class Artwork extends StatelessWidget {
     // Album cover from YouTube Music (or matched later) beats a video frame.
     final art = context.select<MetadataService, String?>(
         (m) => t == null ? null : m.artFor(t));
+    // Downloaded songs keep their cover on disk, so it shows offline too.
+    final localCover = context.select<DownloadService, String?>(
+        (d) => t == null ? null : d.localCover(t.videoId));
     Widget image;
     if (t == null || (t.thumbnail.isEmpty && art == null)) {
       image = placeholder;
@@ -57,7 +63,7 @@ class Artwork extends StatelessWidget {
               errorWidget: (_, _, _) => plain(),
             )
           : plain();
-      image = art == null
+      Widget online() => art == null
           ? frame()
           : CachedNetworkImage(
               imageUrl: art,
@@ -66,6 +72,10 @@ class Artwork extends StatelessWidget {
               placeholder: (_, _) => placeholder,
               errorWidget: (_, _, _) => frame(),
             );
+      image = localCover == null
+          ? online()
+          : Image.file(File(localCover),
+              fit: BoxFit.cover, errorBuilder: (_, _, _) => online());
     }
 
     final box = ClipRRect(

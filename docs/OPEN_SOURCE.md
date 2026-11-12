@@ -14,6 +14,7 @@ README는 Drizon 소스를 MIT로 표기합니다. 저장소에는 아직 LICENS
 | [youtube_explode_dart](https://pub.dev/packages/youtube_explode_dart) 3.0.5 | BSD-3-Clause | 플랫폼 추출기가 실패할 때 쓰는 Dart 스트림 추출. |
 | [http](https://pub.dev/packages/http) 1.6.0 | BSD-3-Clause | YouTube Music · 벅스 · LRCLIB 요청과 다운로드. |
 | [path_provider](https://pub.dev/packages/path_provider) 2.1.5 | BSD-3-Clause | 다운로드 폴더 위치. |
+| [video_player](https://pub.dev/packages/video_player) 2.14.1 | BSD-3-Clause | 뮤직비디오 · 무대 · 직캠 재생. iOS는 AVPlayer, Android는 ExoPlayer를 씁니다. |
 | [shared_preferences](https://pub.dev/packages/shared_preferences) 2.5.5 | BSD-3-Clause | 보관함 · 설정 · 매칭 결과 저장. |
 | [provider](https://pub.dev/packages/provider) 6.1.5+1 | MIT | 상태 관리. |
 | [cached_network_image](https://pub.dev/packages/cached_network_image) 3.4.1 | MIT | 커버 이미지 캐시. |
@@ -25,7 +26,7 @@ README는 Drizon 소스를 MIT로 표기합니다. 저장소에는 아직 LICENS
 | [yt-dlp-ejs](https://pypi.org/project/yt-dlp-ejs/) | Unlicense, MIT, ISC | **iOS만.** yt-dlp의 JS 챌린지 해독 스크립트. 포함된 [meriyah](https://github.com/meriyah/meriyah)(ISC)와 [astring](https://github.com/davidbonnet/astring)(MIT)의 라이선스가 함께 적용됩니다. |
 | [certifi](https://pypi.org/project/certifi/) | MPL-2.0 | **iOS만.** Python HTTPS용 루트 인증서 묶음. |
 
-iOS의 JavaScriptCore, AVFoundation과 Android의 미디어 프레임워크는 운영체제가 제공하며 앱에 포함하지 않습니다.
+iOS의 JavaScriptCore, AVFoundation과 Android의 미디어 프레임워크(MediaExtractor, MediaMuxer 포함)는 운영체제가 제공하며 앱에 포함하지 않습니다. 영상 합치기는 이 시스템 기능으로 처리하므로 FFmpeg를 넣지 않습니다.
 
 ## 빌드 도구
 
@@ -40,7 +41,7 @@ iOS의 JavaScriptCore, AVFoundation과 Android의 미디어 프레임워크는 �
 | 출처 | Drizon에서의 역할 |
 | --- | --- |
 | YouTube Music | 검색, 추천어, 앨범 커버, 앨범명에 비공식 InnerTube 호출을 사용합니다. |
-| YouTube | 재생과 다운로드에 쓰는 스트림 주소. 플랫폼 추출기가 조회합니다. |
+| YouTube | 노래와 영상의 재생 · 다운로드에 쓰는 스트림 주소와 영상 썸네일. 플랫폼 추출기가 조회합니다. |
 | 벅스 | 가사 매칭용 곡 검색과 싱크·일반 가사, 커버 보조. 비공식 경로를 사용합니다. |
 | [LRCLIB](https://lrclib.net/docs) | 벅스에 싱크 가사가 없을 때의 보조 가사 제공처. |
 | PyPI | iOS에서 yt-dlp 업데이트를 받을 때 사용합니다. |

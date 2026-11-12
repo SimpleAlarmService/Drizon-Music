@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 # Idempotently wires the embedded-Python pieces into ios/Runner.xcodeproj:
-#   * Swift sources (PythonRuntime / JSSolver / ExtractorChannel)
+#   * Swift sources (PythonRuntime / JSSolver / ExtractorChannel / VideoMuxer)
 #   * Python.xcframework (linked + embedded & signed)
 #   * PythonApp/app and PythonApp/app_packages as bundle folder references
 #   * "Install Python" build phase (copies stdlib, turns .so modules into frameworks)
@@ -14,7 +14,7 @@ target  = project.targets.find { |t| t.name == 'Runner' } or abort('Runner targe
 runner_group = project.main_group['Runner'] or abort('Runner group not found')
 
 # 1. Swift sources ----------------------------------------------------------
-%w[PythonRuntime.swift JSSolver.swift ExtractorChannel.swift].each do |name|
+%w[PythonRuntime.swift JSSolver.swift ExtractorChannel.swift VideoMuxer.swift].each do |name|
   next if runner_group.files.any? { |f| f.path == name }
   ref = runner_group.new_file(name)
   target.source_build_phase.add_file_reference(ref)

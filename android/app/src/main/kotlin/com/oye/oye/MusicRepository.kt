@@ -91,6 +91,45 @@ object MusicRepository {
         return best.content ?: throw Exception("Stream content is null for $videoId")
     }
 
+    // ── Video streams ──────────────────────────────────────────────────────────
+    // Same shape the iOS (yt-dlp) side returns, so Dart picks formats once:
+    // {headers, hls, formats: [{url, kind, ext, height, bitrate, vcodec, acodec}]}
+
+    fun getVideoStreams(videoId: String): Map<String, Any?> {
+        val info = StreamInfo.getInfo(ServiceList.YouTube, "https://www.youtube.com/watch?v=$videoId")
+        val formats = mutableListOf<Map<String, Any?>>()
+
+        fun add(url: String?, kind: String, ext: String?, height: Int, bitrate: Int,
+                vcodec: String?, acodec: String?) {
+            if (url.isNullOrEmpty()) return
+            formats.add(mapOf(
+                "url" to url, "kind" to kind, "ext" to (ext ?: ""), "height" to height,
+                "bitrate" to bitrate, "vcodec" to (vcodec ?: ""), "acodec" to (acodec ?: ""),
+            ))
+        }
+
+        for (s in info.videoStreams) {          // video + audio in one file
+            if (s.deliveryMethod != DeliveryMethod.PROGRESSIVE_HTTP) continue
+            add(s.content, "muxed", s.format?.suffix, s.height, s.bitrate, s.codec, "mp4a")
+        }
+        for (s in info.videoOnlyStreams) {
+            if (s.deliveryMethod != DeliveryMethod.PROGRESSIVE_HTTP) continue
+            add(s.content, "video", s.format?.suffix, s.height, s.bitrate, s.codec, null)
+        }
+        for (s in info.audioStreams) {
+            if (s.deliveryMethod != DeliveryMethod.PROGRESSIVE_HTTP) continue
+            add(s.content, "audio", s.format?.suffix, 0, s.averageBitrate * 1000, null, s.codec)
+        }
+
+        return mapOf(
+            "headers" to emptyMap<String, String>(),
+            "hls" to info.hlsUrl?.ifEmpty { null },
+            "formats" to formats,
+            "title" to info.name,
+            "durationSec" to info.duration.toInt(),
+        )
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────────────
 
     private fun extractVideoId(url: String): String? {

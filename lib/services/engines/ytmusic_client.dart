@@ -18,6 +18,7 @@ class YtmItem {
   final String thumbnail; // as returned (video frame or album art)
   final String? albumArt; // square cover, songs only
   final YtmKind kind;
+  final String? views; // "조회수 80만회", videos only
 
   const YtmItem({
     required this.videoId,
@@ -28,7 +29,31 @@ class YtmItem {
     this.album,
     this.albumArt,
     this.durationSec = 0,
+    this.views,
   });
+
+  /// 16:9 YouTube thumbnail for video lists ('mqdefault', 'hqdefault', 'maxresdefault').
+  String videoThumb([String size = 'hqdefault']) => 'https://i.ytimg.com/vi/$videoId/$size.jpg';
+
+  Map<String, dynamic> toMap() => {
+        'videoId': videoId,
+        'title': title,
+        'artist': artist,
+        'thumbnail': thumbnail,
+        'kind': kind.name,
+        'durationSec': durationSec,
+        if (views != null) 'views': views,
+      };
+
+  factory YtmItem.fromMap(Map<dynamic, dynamic> m) => YtmItem(
+        videoId: m['videoId'] as String,
+        title: m['title'] as String? ?? '',
+        artist: m['artist'] as String? ?? '',
+        thumbnail: m['thumbnail'] as String? ?? '',
+        kind: YtmKind.values.firstWhere((k) => k.name == m['kind'], orElse: () => YtmKind.video),
+        durationSec: (m['durationSec'] as num?)?.toInt() ?? 0,
+        views: m['views'] as String?,
+      );
 
   Track toTrack() => Track(
         videoId: videoId,
@@ -94,6 +119,19 @@ class YtmClient {
       }
     }
     return rank(items);
+  }
+
+  /// Videos only (music videos, stages, fancams…), using the "Videos" filter chip.
+  Future<List<YtmItem>> searchVideos(String query) async {
+    final q = query.trim();
+    if (q.isEmpty) return const [];
+    final first = await _call('search', {'query': q});
+    final params = videosFilterParams(first);
+    final items = params == null
+        ? parseSearch(first)
+        : parseSearch(await _call('search', {'query': q, 'params': params}));
+    final seen = <String>{};
+    return items.where((i) => i.kind != YtmKind.song && seen.add(i.videoId)).toList();
   }
 
   Future<List<String>> suggestions(String input) async {
@@ -190,8 +228,14 @@ class YtmClient {
   }
 
   /// Params of the "Songs" filter chip, if the response offers one.
-  static String? songsFilterParams(Map<String, dynamic> json) {
-    const labels = {'노래', '곡', 'songs', 'song'};
+  static String? songsFilterParams(Map<String, dynamic> json) =>
+      _filterParams(json, const {'노래', '곡', 'songs', 'song'});
+
+  /// Params of the "Videos" filter chip.
+  static String? videosFilterParams(Map<String, dynamic> json) =>
+      _filterParams(json, const {'동영상', 'videos', 'video'});
+
+  static String? _filterParams(Map<String, dynamic> json, Set<String> labels) {
     String? found;
     void walk(Object? node) {
       if (found != null) return;
@@ -329,7 +373,7 @@ class YtmClient {
       }
     }
 
-    String? label, artist, album;
+    String? label, artist, album, views;
     var duration = 0;
     for (final seg in segments.where((s) => s.isNotEmpty)) {
       final text = seg.map((r) => r['text'] ?? '').join().trim();
@@ -353,7 +397,7 @@ class YtmClient {
       } else if (label == null && artist == null && _typeLabels.contains(text.toLowerCase())) {
         label = text;
       } else if (RegExp(r'(조회수|재생|views?|plays?|회$|좋아요)', caseSensitive: false).hasMatch(text)) {
-        // view / play counts
+        views ??= text;
       } else {
         artist ??= text; // artist without a link (e.g. "Various Artists")
       }
@@ -378,6 +422,7 @@ class YtmClient {
       thumbnail: thumb,
       albumArt: kind == YtmKind.song ? squareArt(thumb) : null,
       kind: kind,
+      views: kind == YtmKind.song ? null : views,
     );
   }
 

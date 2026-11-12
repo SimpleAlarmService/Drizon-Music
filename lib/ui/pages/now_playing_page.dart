@@ -1,9 +1,11 @@
+import 'dart:io';
 import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart' hide RepeatMode;
 import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:provider/provider.dart';
 import '../../models/track.dart';
+import '../../services/download_service.dart';
 import '../../services/library_service.dart';
 import '../../services/metadata_service.dart';
 import '../../services/player_service.dart';
@@ -88,23 +90,26 @@ class _Backdrop extends StatelessWidget {
   Widget build(BuildContext context) {
     final image = context.select<MetadataService, String?>((m) => m.artFor(track)) ??
         track.thumbnail;
+    final local = context.select<DownloadService, String?>((d) => d.localCover(track.videoId));
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 500),
       child: Stack(
-        key: ValueKey(image),
+        key: ValueKey(local ?? image),
         fit: StackFit.expand,
         children: [
           const ColoredBox(color: Color(0xFF111111)),
-          if (image.isNotEmpty)
+          if (local != null || image.isNotEmpty)
             ImageFiltered(
               imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
               child: Transform.scale(
                 scale: 1.8,
-                child: CachedNetworkImage(
-                  imageUrl: image,
-                  fit: BoxFit.cover,
-                  errorWidget: (_, _, _) => const SizedBox.shrink(),
-                ),
+                child: local != null
+                    ? Image.file(File(local), fit: BoxFit.cover)
+                    : CachedNetworkImage(
+                        imageUrl: image,
+                        fit: BoxFit.cover,
+                        errorWidget: (_, _, _) => const SizedBox.shrink(),
+                      ),
               ),
             ),
           ColoredBox(color: Colors.black.withValues(alpha: 0.42)),

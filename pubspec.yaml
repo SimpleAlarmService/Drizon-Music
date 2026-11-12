@@ -29,6 +29,9 @@ dependencies:
   # App documents directory for optional offline downloads
   path_provider: ^2.1.4
 
+  # Music videos, stages and fancams (AVPlayer / ExoPlayer, HLS supported)
+  video_player: ^2.9.2
+
   # State management
   provider: ^6.1.2
 

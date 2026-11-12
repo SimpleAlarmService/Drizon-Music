@@ -78,4 +78,15 @@ void main() {
       expect(r.found, isTrue);
     }
   }, skip: _skip, timeout: const Timeout(Duration(minutes: 2)));
+
+  test('YouTube Music video search (fancams, stages, MVs)', () async {
+    final ytm = YtmClient();
+    for (final q in ['아이유 직캠', '뉴진스 무대 음악방송', 'aespa MV']) {
+      final v = await ytm.searchVideos(q);
+      // ignore: avoid_print
+      print('$q → ${v.length} videos; first: ${v.isEmpty ? '-' : '${v.first.title} | ${v.first.artist} | ${v.first.views} | ${v.first.durationSec}s'}');
+      expect(v.length, greaterThanOrEqualTo(5));
+      expect(v.every((i) => i.kind != YtmKind.song), isTrue);
+    }
+  }, skip: _skip);
 }

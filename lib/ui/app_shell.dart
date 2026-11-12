@@ -5,6 +5,7 @@ import 'pages/home_page.dart';
 import 'pages/library_page.dart';
 import 'pages/now_playing_page.dart';
 import 'pages/search_page.dart';
+import 'pages/videos_page.dart';
 import 'widgets/mini_player.dart';
 
 /// Tab scaffold: pages, the floating mini player, and a translucent tab bar.
@@ -30,9 +31,10 @@ class _AppShellState extends State<AppShell> {
               child: IndexedStack(
                 index: _tab,
                 children: [
-                  HomePage(onSearch: () => setState(() => _tab = 1)),
-                  const SearchPage(),
+                  HomePage(onSearch: () => setState(() => _tab = 3)),
+                  const VideosPage(),
                   const LibraryPage(),
+                  const SearchPage(),
                 ],
               ),
             ),
@@ -52,9 +54,11 @@ class _AppShellState extends State<AppShell> {
               BottomNavigationBarItem(
                   icon: Icon(CupertinoIcons.play_circle_fill), label: '지금 듣기'),
               BottomNavigationBarItem(
-                  icon: Icon(CupertinoIcons.search), label: '검색'),
+                  icon: Icon(CupertinoIcons.play_rectangle_fill), label: '비디오'),
               BottomNavigationBarItem(
                   icon: Icon(CupertinoIcons.music_albums_fill), label: '보관함'),
+              BottomNavigationBarItem(
+                  icon: Icon(CupertinoIcons.search), label: '검색'),
             ],
           ),
         ],

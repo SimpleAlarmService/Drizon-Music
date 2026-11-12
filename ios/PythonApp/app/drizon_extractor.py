@@ -122,6 +122,51 @@ def _stream(req):
     }
 
 
+def _video_formats(info):
+    """Normalise yt-dlp formats to the shape all platforms return to Dart:
+    {headers, hls, formats: [{url, kind: muxed|video|audio, ext, height, bitrate, vcodec, acodec}]}
+    """
+    out, hls = [], None
+    for f in info.get('formats') or []:
+        proto = f.get('protocol') or ''
+        vcodec, acodec = f.get('vcodec') or 'none', f.get('acodec') or 'none'
+        if proto.startswith('m3u8'):
+            # AVPlayer plays YouTube's HLS natively (adaptive, up to 1080p+).
+            if hls is None and vcodec != 'none':
+                hls = f.get('manifest_url') or f.get('url')
+            continue
+        if not proto.startswith('http') or not f.get('url'):
+            continue  # storyboards (mhtml), DASH manifests, etc.
+        if vcodec == 'none' and acodec == 'none':
+            continue
+        kind = 'muxed' if vcodec != 'none' and acodec != 'none' else ('audio' if vcodec == 'none' else 'video')
+        out.append({
+            'url': f['url'],
+            'kind': kind,
+            'ext': f.get('ext') or '',
+            'height': int(f.get('height') or 0),
+            'bitrate': int((f.get('tbr') or f.get('abr') or 0) * 1000),
+            'vcodec': '' if vcodec == 'none' else vcodec,
+            'acodec': '' if acodec == 'none' else acodec,
+        })
+    return {
+        'headers': {k: str(v) for k, v in (info.get('http_headers') or {}).items()},
+        'hls': hls,
+        'formats': out,
+        'title': info.get('title'),
+        'durationSec': int(info.get('duration') or 0),
+    }
+
+
+def _video(req):
+    vid = req['videoId']
+    # Any selector works: we return the full format list and Dart chooses.
+    opts = _opts({'format': 'b/bv*'}, client_type=req.get('clientType') or 'ANDROID')
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        info = ydl.extract_info(f'https://www.youtube.com/watch?v={vid}', download=False)
+    return _video_formats(info)
+
+
 def _http_json(url):
     with urllib.request.urlopen(url, timeout=30) as r:
         return json.load(r)
@@ -168,7 +213,7 @@ def _version(_req):
     return {'ytdlp': yt_dlp.version.__version__}
 
 
-_OPS = {'search': _search, 'stream': _stream, 'update': _update, 'version': _version}
+_OPS = {'search': _search, 'stream': _stream, 'video': _video, 'update': _update, 'version': _version}
 
 
 def handle(request_json: str) -> str:

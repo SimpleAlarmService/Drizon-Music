@@ -14,6 +14,7 @@ import 'package:just_audio_platform_interface/just_audio_platform_interface.dart
 import 'package:oye/main.dart';
 import 'package:oye/models/settings_model.dart';
 import 'package:oye/models/track.dart';
+import 'package:oye/models/video_streams.dart';
 import 'package:oye/services/download_service.dart';
 import 'package:oye/services/engines/bugs_client.dart';
 import 'package:oye/services/engines/lrclib_client.dart';
@@ -26,6 +27,7 @@ import 'package:oye/services/settings_service.dart';
 import 'package:oye/services/storage_service.dart';
 import 'package:oye/ui/pages/now_playing_page.dart';
 import 'package:oye/ui/widgets/mini_player.dart';
+import 'package:oye/ui/widgets/video_widgets.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -48,6 +50,13 @@ class _FakeMusic implements MusicService {
   @override
   Future<StreamInfo> getStreamInfo(String id) async =>
       StreamInfo(await getStreamUrl(id), const {});
+  @override
+  Future<VideoStreams> getVideoStreams(String id) async => const VideoStreams(formats: [
+        VideoFormat(url: 'https://example.invalid/v.mp4', kind: 'muxed', ext: 'mp4', height: 360,
+            vcodec: 'avc1', acodec: 'mp4a'),
+      ]);
+  @override
+  Future<void> muxVideo(String v, String a, String o) async {}
   @override
   Future<String> updateExtractor() async => 'yt-dlp test is up to date';
   @override
@@ -130,6 +139,9 @@ MockClient _fakeWeb() => MockClient((req) async {
       if (url.contains('get_search_suggestions')) {
         return http.Response.bytes(utf8.encode(f('ytm_suggestions.json')), 200, headers: utf8Headers);
       }
+      if (url.contains('youtubei/v1/search') && req.body.contains('EgWKAQIQ')) {
+        return http.Response.bytes(utf8.encode(f('ytm_search_videos.json')), 200, headers: utf8Headers);
+      }
       if (url.contains('youtubei/v1/search')) {
         return http.Response.bytes(utf8.encode(f('ytm_search_unfiltered.json')), 200, headers: utf8Headers);
       }
@@ -189,6 +201,9 @@ void main() {
     final metadata = MetadataService(
         prefs, ytm, BugsClient(client: web), LrclibClient(client: web));
     final tmp = await tester.runAsync(() => Directory.systemTemp.createTemp('drizon_ui'));
+    // The image cache asks the platform for a temp folder; there is no platform here.
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel('plugins.flutter.io/path_provider'), (_) async => tmp!.path);
     final downloads = DownloadService(prefs, music, directory: () async => tmp!);
     await tester.runAsync(downloads.init);
     final library = LibraryService(storage, downloads: downloads);
@@ -287,8 +302,28 @@ void main() {
     Navigator.of(tester.element(find.byType(NowPlayingPage))).pop();
     await settle(tester);
 
+    // Videos tab: shelves for the most-played artist (captured video search).
+    await tester.tap(find.byIcon(CupertinoIcons.play_rectangle_fill));
+    for (var i = 0; i < 20; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    await shot(tester, 'ui_videos');
+    expect(find.textContaining('직캠'), findsWidgets);
+
+    // Video player: no video platform in tests, so it must fail gracefully.
+    await tester.tap(find.byType(VideoThumb).first);
+    for (var i = 0; i < 10; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    await shot(tester, 'ui_video_player');
+    expect(find.text('음악으로 듣기'), findsOneWidget);
+    await tester.tap(find.byIcon(CupertinoIcons.chevron_down));
+    await settle(tester);
+
     // Search tab
-    await tester.tap(find.byIcon(CupertinoIcons.search).first);
+    await tester.tap(find.text('검색')); // tab label
     await settle(tester);
     await tester.enterText(find.byType(CupertinoSearchTextField), '아이유 밤');
     await tester.pump(const Duration(milliseconds: 300));
