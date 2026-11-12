@@ -106,6 +106,25 @@ yt-dlp를 번들 버전으로 올리고 싶을 때도 같은 스크립트를 다
 > **첫 실행이 느릴 수 있습니다.** yt-dlp는 추출기 모듈이 수천 개라 첫 import에 몇 초가 걸리고,
 > 이후에는 캐시된 바이트코드를 씁니다. 앱은 시작과 동시에 백그라운드에서 미리 로드합니다.
 
+### TestFlight
+
+Mac에서 Xcode에 개발자 팀(`WSH6T8F59M`)으로 로그인하고, App Store Connect에 번들 ID `com.oye.oye` 앱이 있으면:
+
+```bash
+./ios/scripts/testflight.sh
+```
+
+빌드 번호를 시각으로 자동 지정해 IPA를 만들고 App Store Connect에 올립니다. Xcode 로그인 대신 API 키를 쓰려면 `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_PATH`를 지정합니다.
+
+### 앱 아이콘
+
+아이콘은 앱의 LP · Liquid Glass 위젯으로 그립니다([AppIconArt](lib/ui/brand/app_icon_art.dart)). 바꾼 뒤에는:
+
+```bash
+DRIZON_RENDER_ICON=1 flutter test test/render_app_icon_test.dart
+dart run flutter_launcher_icons
+```
+
 ### Android
 
 ```bash
