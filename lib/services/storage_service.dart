@@ -95,6 +95,8 @@ class StorageService {
     }
   }
 
+  Future<void> clearHistory() => _prefs.remove(_historyKey);
+
   // ── Playlists ───────────────────────────────────────────────────────────────
 
   List<Playlist> getPlaylists() {

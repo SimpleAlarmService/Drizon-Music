@@ -11,7 +11,7 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.8
 
-  # YouTube stream extraction & search (pure Dart, Android + iOS)
+  # Fallback YouTube extractor (pure Dart). iOS primarily uses embedded Python + yt-dlp.
   youtube_explode_dart: ^3.0.5
 
   # Audio playback with queue, shuffle, repeat
@@ -32,13 +32,12 @@ dependencies:
   # Reactive streams
   rxdart: ^0.27.7
 
-  # Google Fonts (Epilogue + Manrope — matching Sonic Editorial design)
-  google_fonts: ^6.2.1
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  # Fake audio platform for widget tests
+  just_audio_platform_interface: ^4.6.0
   flutter_launcher_icons: ^0.13.1
 
 flutter_launcher_icons:

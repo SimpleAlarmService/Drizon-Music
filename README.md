@@ -1,6 +1,6 @@
 # Drizon
 
-> YouTube 오디오를 스트리밍하는 개인용 뮤직 플레이어 앱 (Flutter)
+> YouTube 오디오를 스트리밍하는 개인용 뮤직 플레이어 (Flutter) — Apple Music 스타일 UI, **서버 없음**
 
 <br>
 
@@ -8,100 +8,67 @@
 
 | 기능 | 설명 |
 |------|------|
+| 🎠 **커버플로우 보관함** | 좋아요 · 최근 재생 · 내 플레이리스트를 3D 커버플로우로 넘겨보기 |
 | 🔍 **검색** | YouTube에서 실시간 트랙 검색 |
-| ▶️ **재생** | 백그라운드 재생, 잠금 화면 컨트롤 지원 |
+| ▶️ **재생** | 백그라운드 재생, 잠금 화면 컨트롤 |
+| 🎧 **지금 재생 중** | 블러 배경, 일시정지 시 줄어드는 커버, 스크러버, 대기열(드래그 정렬 · 스와이프 삭제) |
 | 🔀 **셔플 / 반복** | 셔플 (히스토리 기반 뒤로가기), 반복 없음 / 한 곡 / 전체 |
-| 📋 **큐 관리** | 추가, 제거, 드래그 재정렬 |
-| 💾 **플레이리스트** | 생성 · 이름 변경 · 삭제, 곡 추가 / 제거 |
-| ❤️ **좋아요** | 좋아요 표시 곡 보관 |
-| 🕓 **재생 기록** | 최근 재생 50곡 자동 기록 |
-| ⚙️ **설정** | 오디오 품질, 익스트랙터, 자동재생 등 |
+| 💾 **플레이리스트 · 좋아요** | 생성 · 이름 변경 · 삭제, 곡 추가 / 제거 |
 | 💿 **세션 복원** | 앱 재시작 후 이전 큐 · 위치 자동 복원 |
 
 <br>
 
-## 기술 스택
+## 구조
 
 ```
-Flutter 3  ·  Dart 3
-just_audio + just_audio_background   — 오디오 엔진
-youtube_explode_dart                 — YouTube 스트림 추출 (Dart)
-NewPipe (MethodChannel)              — Android 네이티브 추출기 (1순위)
-provider                             — 상태 관리
-shared_preferences                   — 로컬 영속성
-cached_network_image                 — 이미지 캐싱
-Google Fonts (Epilogue · Manrope)    — 타이포그래피
+                    ┌───────────────────────── Flutter (Dart) ─────────────────────────┐
+                    │  ui/  (Apple Music 스타일)   services/  (재생 · 보관함 · 설정)     │
+                    └───────────────┬─────────────────────────────────────┬─────────────┘
+                       MethodChannel "music.extractor"                    │ just_audio
+              ┌─────────────────────┴───────────┐                         ▼
+        Android                                 iOS                  AVPlayer / ExoPlayer
+        NewPipe (Kotlin)          Swift ── 내장 CPython ── yt-dlp
+                                       └── JavaScriptCore (JS 챌린지 해독)
 ```
 
-<br>
-
-## 아키텍처
+- **서버가 없습니다.** 검색과 스트림 URL 추출이 전부 기기 안에서 일어납니다.
+- iOS는 앱 안에 **CPython**을 내장하고 **yt-dlp**를 라이브러리로 호출합니다.
+- iOS는 서브프로세스를 띄울 수 없어서 yt-dlp의 JS 런타임(deno/node 등)을 쓸 수 없습니다.
+  대신 yt-dlp의 챌린지 공급자(`JsChallengeProvider`)를 구현해 **시스템 JavaScriptCore**로 해독합니다
+  (`ios/PythonApp/app/drizon_jsc.py` ⇄ `ios/Runner/JSSolver.swift`).
+- 실패하면 Dart 구현(`youtube_explode_dart`)으로 자동 대체됩니다 (설정에서 끌 수 있음).
+- yt-dlp는 앱 **재설치 없이 업데이트**됩니다: 설정 → *yt-dlp 업데이트*가 PyPI에서 새 wheel을
+  체크섬 검증 후 내려받고, 다음 실행부터 번들된 버전보다 우선해서 로드합니다.
 
 ```
 lib/
-├── main.dart                       # 앱 진입점, Provider 트리 초기화
-│
-├── models/
-│   ├── track.dart                  # Track 데이터 모델
-│   ├── playlist.dart               # Playlist 데이터 모델
-│   └── settings_model.dart         # AppSettings (AudioQuality, ExtractorType …)
-│
+├── main.dart                  # 진입점, Provider 트리
+├── theme.dart                 # Apple Music 팔레트 (라이트/다크), 텍스트 스타일
+├── models/                    # Track · Playlist · AppSettings
 ├── services/
-│   ├── music_service.dart          # YouTube 검색 · 스트림 URL 추출
-│   ├── player_service.dart         # 재생 상태 (ChangeNotifier) — 큐, 셔플, 반복
-│   ├── storage_service.dart        # SharedPreferences 영속성
-│   └── settings_service.dart       # 설정 관리 (ChangeNotifier)
-│
-├── screens/
-│   ├── main_screen.dart            # 하단 내비게이션 + IndexedStack
-│   ├── home_screen.dart            # 홈 (히어로 섹션, 트렌딩)
-│   ├── search_screen.dart          # 검색
-│   ├── library_screen.dart         # 보관함 (플레이리스트 / 좋아요 / 기록)
-│   ├── playlist_detail_screen.dart # 플레이리스트 상세
-│   ├── player_screen.dart          # 풀스크린 플레이어
-│   └── settings_screen.dart        # 설정
-│
-└── widgets/
-    ├── mini_player.dart            # 하단 미니 플레이어 바
-    ├── track_tile.dart             # 트랙 목록 아이템 (옵션 시트 포함)
-    ├── track_shelf.dart            # 가로 스크롤 트랙 캐러셀
-    └── playlist_sheet.dart         # 플레이리스트 저장 바텀시트
+│   ├── music_service.dart     # 검색 · 스트림 추출 (Android: NewPipe, iOS: yt-dlp, 공통 폴백: Dart)
+│   ├── player_service.dart    # 큐 · 셔플 · 반복 · 재생 상태
+│   ├── library_service.dart   # 좋아요 · 기록 · 플레이리스트 (변경 시 UI 갱신)
+│   ├── storage_service.dart   # SharedPreferences 영속성
+│   └── settings_service.dart
+└── ui/
+    ├── app_shell.dart         # 탭바 + 미니 플레이어
+    ├── pages/                 # home · search · library · now_playing · settings
+    └── widgets/               # cover_flow · artwork · track_row · mini_player · actions
+
+ios/
+├── Runner/
+│   ├── PythonRuntime.swift    # CPython 부팅 · 호출 (GIL, 큰 스택 스레드)
+│   ├── JSSolver.swift         # JavaScriptCore로 yt-dlp 챌린지 스크립트 실행
+│   └── ExtractorChannel.swift # MethodChannel ⇄ Python
+├── PythonApp/
+│   ├── app/                   # drizon_extractor.py · drizon_jsc.py
+│   ├── app_packages/          # yt-dlp 등 (setup 스크립트가 채움, git 제외)
+│   └── tests/                 # 호스트에서 도는 Python 테스트
+└── scripts/
+    ├── setup_python.sh        # Python.xcframework 다운로드 + yt-dlp 설치 + 프로젝트 패치
+    └── patch_xcodeproj.rb     # Runner.xcodeproj에 위 구성요소를 연결 (멱등)
 ```
-
-<br>
-
-## 스트림 추출 흐름
-
-```
-재생 요청
-    │
-    ▼
-Android?
- ├─ Yes → NewPipe (MethodChannel)  ──실패──▶  youtube_explode_dart (fallback)
- └─ No  → youtube_explode_dart
-                │
-                ▼
-         Audio Stream URL
-                │
-                ▼
-        just_audio 재생
-```
-
-- 각 추출기는 **최대 2회 재시도** (1 s 백오프)
-- 2회 모두 실패 시 자동으로 다음 곡으로 skip
-- 설정에서 익스트랙터 / YouTube 클라이언트 타입 (ANDROID · WEB · TV) 변경 가능
-
-<br>
-
-## 설정 항목
-
-| 카테고리 | 항목 |
-|----------|------|
-| 재생 | 자동 재생, 오디오 품질 (Low · Medium · High) |
-| 네트워크 | Wi-Fi 전용, 데이터 절약 |
-| 캐시 | 캐시 사용, 크기 (64 MB – 1 GB), 캐시 지우기 |
-| 고급 *(개발자 모드)* | 익스트랙터 선택, YouTube 클라이언트 타입, Dart 폴백 |
-| 디버그 | 고급 설정 표시, 전체 초기화 |
 
 <br>
 
@@ -109,39 +76,59 @@ Android?
 
 ### 요구 사항
 
-- Flutter `≥ 3.x` / Dart `≥ 3.x`
-- Android SDK 21+ 또는 iOS 14+
+- Flutter `≥ 3.38` / Dart `≥ 3.10`
+- iOS: **Mac + Xcode** (iOS 13+), `python3`, `ruby` (CocoaPods와 함께 설치된 `xcodeproj` gem)
+- Android: Android SDK 21+
 
-### 설치 및 실행
+### iOS
 
 ```bash
-git clone https://github.com/your-username/drizon.git
-cd drizon
+git clone <repo> && cd Drizon-Music
 flutter pub get
-flutter run
+./ios/scripts/setup_python.sh      # 최초 1회 (Python.xcframework + yt-dlp 설치, 프로젝트 연결)
+flutter run                        # 실기기 또는 시뮬레이터
 ```
 
-### 릴리즈 빌드 (Android)
+`setup_python.sh`는 BeeWare [Python-Apple-support](https://github.com/beeware/Python-Apple-support)의
+최신 3.13 iOS 빌드를 받습니다 (`PY_MINOR`, `SUPPORT_URL` 환경변수로 변경 가능).
+yt-dlp를 번들 버전으로 올리고 싶을 때도 같은 스크립트를 다시 실행하면 됩니다.
+
+> **첫 실행이 느릴 수 있습니다.** yt-dlp는 추출기 모듈이 수천 개라 첫 import에 몇 초가 걸리고,
+> 이후에는 캐시된 바이트코드를 씁니다. 앱은 시작과 동시에 백그라운드에서 미리 로드합니다.
+
+### Android
 
 ```bash
-# APK
-flutter build apk --release
+flutter pub get
+flutter run
 
-# App Bundle
-flutter build appbundle --release
+# 릴리즈 빌드
+flutter build apk --release
+```
+
+`AndroidManifest.xml`에 `INTERNET`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK` 권한이 필요합니다.
+
+<br>
+
+## 테스트
+
+```bash
+flutter test                                   # 보관함 로직 · 커버플로우 · 전체 화면 스모크 테스트
+DRIZON_SHOT_DIR=/tmp/shots flutter test       # 각 화면을 PNG로도 저장 (레이아웃 확인용)
+
+python3 -m unittest discover -s ios/PythonApp/tests -v   # Python 레이어 (setup 후)
 ```
 
 <br>
 
-## Android 권한
+## 알려진 제한
 
-`AndroidManifest.xml`에 아래 권한이 필요합니다.
-
-```xml
-<uses-permission android:name="android.permission.INTERNET" />
-<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-<uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
-```
+- **App Store 배포는 어렵습니다.** YouTube 오디오를 추출해 재생하는 방식은 YouTube 약관과 충돌하므로
+  개인용 사이드로드(Xcode 직접 설치)를 전제로 합니다. 무료 Apple ID는 7일마다 재서명이 필요합니다.
+- YouTube 측 변경으로 추출이 깨질 수 있습니다. iOS는 설정의 *yt-dlp 업데이트*로 대응합니다.
+- 앱 프로세스 안의 JavaScriptCore는 JIT 없이 돌아서, 영상마다 첫 재생 시 챌린지 해독에 시간이 더 걸릴 수 있습니다.
+- iOS 코드(Swift/Python 내장)는 Linux 개발 환경에서 작성되어 **실제 기기에서의 빌드 · 실행은 아직 검증되지 않았습니다.**
+  Dart UI와 Python 레이어는 자동 테스트로 검증됩니다.
 
 <br>
 

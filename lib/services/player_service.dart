@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import '../models/track.dart';
-import '../models/settings_model.dart';
 import 'music_service.dart';
 import 'storage_service.dart';
 import 'settings_service.dart';
@@ -33,6 +32,9 @@ class PlayerService extends ChangeNotifier {
 
   // Guard to prevent the completion listener from firing during setup
   bool _isSwitching = false;
+
+  /// Called after a track is written to the play history, so the library UI can refresh.
+  VoidCallback? onHistoryChanged;
 
   // ── Constructor ──────────────────────────────────────────────────────────────
 
@@ -129,18 +131,12 @@ class PlayerService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final url = await _music.getStreamUrl(track.videoId);
+      final stream = await _music.getStreamInfo(track.videoId);
 
       await _player.setAudioSource(
         AudioSource.uri(
-          Uri.parse(url),
-          headers: {
-            'User-Agent':
-                'Mozilla/5.0 (Linux; Android 14; SM-G991B) AppleWebKit/537.36 '
-                '(KHTML, like Gecko) Chrome/130.0.6723.103 Mobile Safari/537.36',
-            'Referer': 'https://www.youtube.com/',
-            'Origin': 'https://www.youtube.com',
-          },
+          Uri.parse(stream.url),
+          headers: stream.headers,
           tag: MediaItem(
             id: track.videoId,
             album: 'Drizon',
@@ -154,6 +150,7 @@ class PlayerService extends ChangeNotifier {
       _isSwitching = false;
       await _player.play();
       await _storage.addToHistory(track);
+      onHistoryChanged?.call();
       _persistState();
     } catch (e) {
       debugPrint('[PlayerService] load error (attempt ${attempt + 1}) '
@@ -365,8 +362,17 @@ class PlayerService extends ChangeNotifier {
 
   // ── Dispose ──────────────────────────────────────────────────────────────────
 
+  bool _disposed = false;
+
+  /// In-flight loads/retries may finish after [dispose]; ignore their updates.
+  @override
+  void notifyListeners() {
+    if (!_disposed) super.notifyListeners();
+  }
+
   @override
   void dispose() {
+    _disposed = true;
     _player.dispose();
     _music.dispose();
     super.dispose();

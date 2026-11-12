@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:just_audio_background/just_audio_background.dart';
+import 'services/library_service.dart';
 import 'services/music_service.dart';
 import 'services/player_service.dart';
-import 'services/storage_service.dart';
 import 'services/settings_service.dart';
-import 'screens/main_screen.dart';
+import 'services/storage_service.dart';
 import 'theme.dart';
+import 'ui/app_shell.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,27 +25,23 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
-    systemNavigationBarColor: Color(0xFF0D0D0D),
-    systemNavigationBarIconBrightness: Brightness.light,
-  ));
-
   // Shared prefs shared between StorageService and SettingsService
   final prefs = await SharedPreferences.getInstance();
 
   final storage = StorageService();
   await storage.initWithPrefs(prefs);
 
-  final settingsService = SettingsService();
-  await settingsService.init(prefs);
+  final settings = SettingsService();
+  await settings.init(prefs);
 
   final music = MusicService();
-  // Apply persisted extractor settings before any stream calls
-  music.applySettings(settingsService.settings);
+  music.applySettings(settings.settings);
+  // Keep extractor behaviour in sync with the settings screen.
+  settings.addListener(() => music.applySettings(settings.settings));
 
-  final player = PlayerService(music, storage, settingsService);
+  final library = LibraryService(storage);
+  final player = PlayerService(music, storage, settings)
+    ..onHistoryChanged = library.historyChanged;
   await player.restoreState();
 
   runApp(
@@ -52,24 +49,32 @@ void main() async {
       providers: [
         Provider<MusicService>.value(value: music),
         Provider<StorageService>.value(value: storage),
-        ChangeNotifierProvider<SettingsService>.value(value: settingsService),
+        ChangeNotifierProvider<SettingsService>.value(value: settings),
         ChangeNotifierProvider<PlayerService>.value(value: player),
+        ChangeNotifierProvider<LibraryService>.value(value: library),
       ],
-      child: const OyeApp(),
+      child: const DrizonApp(),
     ),
   );
 }
 
-class OyeApp extends StatelessWidget {
-  const OyeApp({super.key});
+class DrizonApp extends StatelessWidget {
+  const DrizonApp({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final dark = context.select<SettingsService, bool>((s) => s.settings.darkMode);
     return MaterialApp(
       title: 'Drizon',
-      theme: oyeTheme,
       debugShowCheckedModeBanner: false,
-      home: const MainScreen(),
+      theme: buildTheme(Brightness.light),
+      darkTheme: buildTheme(Brightness.dark),
+      themeMode: dark ? ThemeMode.dark : ThemeMode.light,
+      builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+        value: dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+        child: child!,
+      ),
+      home: const AppShell(),
     );
   }
 }

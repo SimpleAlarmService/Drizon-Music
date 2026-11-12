@@ -1,124 +1,95 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-// ── Sonic Editorial color palette ─────────────────────────────────────────────
-const kPrimary               = Color(0xFFFFB4A8); // salmon
-const kPrimaryContainer      = Color(0xFFFF5540); // coral-red
-const kOnPrimary             = Color(0xFF690100);
-const kOnPrimaryContainer    = Color(0xFF5C0000);
+/// Apple Music's signature red.
+const kAccent = Color(0xFFFA2D48);
 
-const kSecondaryContainer    = Color(0xFF970100);
-const kOnSecondary           = Color(0xFF690100);
+/// Semantic colours (iOS system palette) for the current brightness.
+class Palette {
+  final Color background;
+  final Color surface;
+  final Color surfaceHigh;
+  final Color label;
+  final Color secondaryLabel;
+  final Color separator;
 
-const kTertiary              = Color(0xFFACC7FF);
-const kTertiaryContainer     = Color(0xFF488FFF);
+  const Palette({
+    required this.background,
+    required this.surface,
+    required this.surfaceHigh,
+    required this.label,
+    required this.secondaryLabel,
+    required this.separator,
+  });
 
-const kSurface               = Color(0xFF131313);
-const kSurfaceVariant        = Color(0xFF353535);
-const kSurfaceContainer      = Color(0xFF1F1F1F);
-const kSurfaceContainerLow   = Color(0xFF1B1B1B);
-const kSurfaceContainerHigh  = Color(0xFF2A2A2A);
-const kSurfaceContainerHighest = Color(0xFF353535);
-const kSurfaceContainerLowest  = Color(0xFF0E0E0E);
+  static const dark = Palette(
+    background: Color(0xFF000000),
+    surface: Color(0xFF1C1C1E),
+    surfaceHigh: Color(0xFF2C2C2E),
+    label: Color(0xFFFFFFFF),
+    secondaryLabel: Color(0x99EBEBF5),
+    separator: Color(0x54545458),
+  );
 
-const kOnSurface             = Color(0xFFE2E2E2);
-const kOnSurfaceVariant      = Color(0xFFEBBBB4);
-const kOutline               = Color(0xFFB18780);
-const kOutlineVariant        = Color(0xFF603E39);
+  static const light = Palette(
+    background: Color(0xFFFFFFFF),
+    surface: Color(0xFFF2F2F7),
+    surfaceHigh: Color(0xFFE5E5EA),
+    label: Color(0xFF000000),
+    secondaryLabel: Color(0x993C3C43),
+    separator: Color(0x4A3C3C43),
+  );
 
-// ── Text styles ───────────────────────────────────────────────────────────────
+  static Palette of(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? dark : light;
+}
 
-TextStyle headline(double size, {FontWeight weight = FontWeight.w800, Color? color}) =>
-    GoogleFonts.epilogue(
-      fontSize: size,
-      fontWeight: weight,
-      color: color ?? kOnSurface,
-      letterSpacing: size > 24 ? -1.0 : -0.5,
-      height: 1.0,
-    );
+extension PaletteContext on BuildContext {
+  Palette get pal => Palette.of(this);
+}
 
-TextStyle body(double size, {FontWeight weight = FontWeight.w500, Color? color}) =>
-    GoogleFonts.manrope(
-      fontSize: size,
-      fontWeight: weight,
-      color: color ?? kOnSurface,
-    );
-
-TextStyle label(double size, {Color? color}) =>
-    GoogleFonts.manrope(
-      fontSize: size,
-      fontWeight: FontWeight.w700,
-      color: color ?? kOnSurfaceVariant,
-      letterSpacing: 1.5,
-    );
-
-// ── Theme ─────────────────────────────────────────────────────────────────────
-
-final oyeTheme = ThemeData(
-  brightness: Brightness.dark,
-  scaffoldBackgroundColor: kSurface,
-  colorScheme: const ColorScheme.dark(
-    primary: kPrimary,
-    onPrimary: kOnPrimary,
-    primaryContainer: kPrimaryContainer,
-    onPrimaryContainer: kOnPrimaryContainer,
-    secondary: kPrimary,
-    tertiary: kTertiary,
-    surface: kSurface,
-    onSurface: kOnSurface,
-    surfaceContainerHighest: kSurfaceContainerHighest,
-    outline: kOutline,
-  ),
-  appBarTheme: AppBarTheme(
-    backgroundColor: kSurface,
-    elevation: 0,
-    scrolledUnderElevation: 0,
-    titleTextStyle: GoogleFonts.epilogue(
-      color: kOnSurface,
-      fontSize: 22,
-      fontWeight: FontWeight.w800,
-      letterSpacing: -0.5,
+ThemeData buildTheme(Brightness brightness) {
+  final pal = brightness == Brightness.dark ? Palette.dark : Palette.light;
+  final base = ThemeData(brightness: brightness, useMaterial3: true);
+  return base.copyWith(
+    scaffoldBackgroundColor: pal.background,
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: kAccent,
+      brightness: brightness,
+    ).copyWith(primary: kAccent, surface: pal.background),
+    textTheme: base.textTheme
+        .apply(bodyColor: pal.label, displayColor: pal.label),
+    splashFactory: NoSplash.splashFactory,
+    highlightColor: Colors.transparent,
+    dividerColor: pal.separator,
+    appBarTheme: AppBarTheme(
+      backgroundColor: pal.background,
+      foregroundColor: pal.label,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      centerTitle: true,
     ),
-    iconTheme: const IconThemeData(color: kOnSurface),
-  ),
-  textTheme: TextTheme(
-    displayLarge:  headline(57),
-    displayMedium: headline(45),
-    displaySmall:  headline(36),
-    headlineLarge: headline(32),
-    headlineMedium: headline(28),
-    headlineSmall: headline(24),
-    titleLarge:    body(22, weight: FontWeight.w700),
-    titleMedium:   body(16, weight: FontWeight.w700),
-    titleSmall:    body(14, weight: FontWeight.w700),
-    bodyLarge:     body(16),
-    bodyMedium:    body(14),
-    bodySmall:     body(12, color: kOnSurfaceVariant),
-    labelLarge:    label(14),
-    labelMedium:   label(12),
-    labelSmall:    label(10),
-  ),
-  sliderTheme: const SliderThemeData(
-    activeTrackColor: kPrimary,
-    inactiveTrackColor: kSurfaceContainerHighest,
-    thumbColor: kOnSurface,
-    overlayColor: Color(0x29FFB4A8),
-    thumbShape: RoundSliderThumbShape(enabledThumbRadius: 7),
-    trackHeight: 3,
-  ),
-  iconTheme: const IconThemeData(color: kOnSurface),
-  useMaterial3: true,
-);
+    cupertinoOverrideTheme: CupertinoThemeData(
+      brightness: brightness,
+      primaryColor: kAccent,
+      scaffoldBackgroundColor: pal.background,
+    ),
+  );
+}
 
-// ── Shared decorations ────────────────────────────────────────────────────────
-
-BoxDecoration glassDecoration({double radius = 12}) => BoxDecoration(
-  color: kSurfaceVariant.withValues(alpha: 0.6),
-  borderRadius: BorderRadius.circular(radius),
-);
-
-LinearGradient get primaryGradient => const LinearGradient(
-  colors: [kPrimary, kPrimaryContainer],
-  begin: Alignment.topLeft,
-  end: Alignment.bottomRight,
-);
+/// Shared text styles. System font (SF Pro on iOS) throughout.
+class Type {
+  static TextStyle largeTitle(Palette p) => TextStyle(
+      fontSize: 34,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.4,
+      color: p.label);
+  static TextStyle title(Palette p) =>
+      TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: p.label);
+  static TextStyle row(Palette p) =>
+      TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: p.label);
+  static TextStyle sub(Palette p) =>
+      TextStyle(fontSize: 14, color: p.secondaryLabel);
+  static TextStyle caption(Palette p) =>
+      TextStyle(fontSize: 12, color: p.secondaryLabel);
+}

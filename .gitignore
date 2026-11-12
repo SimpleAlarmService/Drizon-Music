@@ -43,3 +43,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Embedded Python runtime for iOS (fetched by ios/scripts/setup_python.sh)
+/ios/Python.xcframework/
+/ios/PythonApp/app_packages/*
+!/ios/PythonApp/app_packages/.gitkeep

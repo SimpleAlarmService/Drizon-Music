@@ -9,24 +9,47 @@ import '../models/settings_model.dart';
 ///
 /// Extractor behaviour is controlled at runtime via [applySettings].
 /// Android → NewPipe via MethodChannel (primary) with Dart fallback.
-/// iOS / forced innertube → youtube_explode_dart only.
+/// iOS     → embedded Python + yt-dlp via MethodChannel (primary) with Dart fallback.
+/// Forced "innertube" → youtube_explode_dart only.
 abstract class MusicService {
   Future<List<Track>> search(String query);
   Future<String> getStreamUrl(String videoId);
+
+  /// Stream URL plus the HTTP headers the player must send with it.
+  Future<StreamInfo> getStreamInfo(String videoId);
+
+  /// iOS only: download the newest yt-dlp (applied on next launch).
+  /// Returns a human-readable status line.
+  Future<String> updateExtractor();
+
   Future<void> dispose();
 
   /// Apply extractor settings at runtime without recreating the service.
   void applySettings(AppSettings settings);
 
   factory MusicService() {
-    if (Platform.isAndroid) return _AndroidMusicService();
+    if (Platform.isAndroid || Platform.isIOS) return _NativeMusicService();
     return _DartMusicService();
   }
 }
 
-// ─── Android: NewPipe via MethodChannel ───────────────────────────────────────
+/// A resolved audio stream.
+class StreamInfo {
+  final String url;
+  final Map<String, String> headers;
+  const StreamInfo(this.url, this.headers);
+}
 
-class _AndroidMusicService implements MusicService {
+const _defaultStreamHeaders = {
+  'User-Agent': 'Mozilla/5.0 (Linux; Android 14; SM-G991B) AppleWebKit/537.36 '
+      '(KHTML, like Gecko) Chrome/130.0.6723.103 Mobile Safari/537.36',
+  'Referer': 'https://www.youtube.com/',
+  'Origin': 'https://www.youtube.com',
+};
+
+// ─── Android: NewPipe / iOS: yt-dlp — both via MethodChannel ──────────────────
+
+class _NativeMusicService implements MusicService {
   static const _ch = MethodChannel('music.extractor');
   final _dartService = _DartMusicService();
 
@@ -48,6 +71,8 @@ class _AndroidMusicService implements MusicService {
   bool get _skipNative =>
       _primaryExtractor == ExtractorType.innertube;
 
+  String get _engine => Platform.isIOS ? 'yt-dlp' : 'NewPipe';
+
   @override
   Future<List<Track>> search(String query) async {
     if (!_skipNative) {
@@ -57,38 +82,71 @@ class _AndroidMusicService implements MusicService {
           return raw.cast<Map<dynamic, dynamic>>().map(Track.fromMap).toList();
         }
       } catch (e) {
-        debugPrint('[MusicService] NewPipe search error: $e');
+        debugPrint('[MusicService] $_engine search error: $e');
       }
     }
     return _dartService.search(query);
   }
 
   @override
-  Future<String> getStreamUrl(String videoId) async {
+  Future<String> getStreamUrl(String videoId) async =>
+      (await getStreamInfo(videoId)).url;
+
+  @override
+  Future<StreamInfo> getStreamInfo(String videoId) async {
     if (!_skipNative) {
       for (int attempt = 0; attempt < 2; attempt++) {
         try {
-          final url = await _ch.invokeMethod<String>('getStream', {
-            'videoId': videoId,
-            'clientType': _clientType.value,
-            'quality': _audioQuality.value,
-          });
-          if (url != null && url.isNotEmpty) return url;
+          final info = await _nativeStream(videoId);
+          if (info != null) return info;
         } catch (e) {
           debugPrint(
-              '[MusicService] NewPipe stream error (attempt ${attempt + 1}): $e');
+              '[MusicService] $_engine stream error (attempt ${attempt + 1}): $e');
           if (attempt == 0) {
             await Future.delayed(const Duration(milliseconds: 600));
           }
         }
       }
-      debugPrint('[MusicService] NewPipe failed twice.');
+      debugPrint('[MusicService] $_engine failed twice.');
     }
 
     if (_enableFallback || _skipNative) {
-      return _dartService.getStreamUrl(videoId);
+      return _dartService.getStreamInfo(videoId);
     }
-    throw Exception('Stream unavailable: NewPipe failed and fallback disabled');
+    throw Exception('Stream unavailable: $_engine failed and fallback disabled');
+  }
+
+  Future<StreamInfo?> _nativeStream(String videoId) async {
+    final args = {
+      'videoId': videoId,
+      'clientType': _clientType.value,
+      'quality': _audioQuality.value,
+    };
+    if (Platform.isIOS) {
+      // yt-dlp tells us which headers the URL needs (they depend on the client).
+      final raw = await _ch.invokeMapMethod<String, dynamic>('getStreamInfo', args);
+      final url = raw?['url'] as String?;
+      if (url == null || url.isEmpty) return null;
+      final headers = <String, String>{
+        for (final e in ((raw?['headers'] as Map?) ?? const {}).entries)
+          e.key.toString(): e.value.toString(),
+      };
+      return StreamInfo(url, headers);
+    }
+    final url = await _ch.invokeMethod<String>('getStream', args);
+    if (url == null || url.isEmpty) return null;
+    return StreamInfo(url, _defaultStreamHeaders);
+  }
+
+  @override
+  Future<String> updateExtractor() async {
+    if (!Platform.isIOS) return 'Only available on iOS';
+    final r = await _ch.invokeMapMethod<String, dynamic>('updateExtractor');
+    final installed = r?['installed'];
+    final running = r?['running'];
+    return r?['restartRequired'] == true
+        ? 'yt-dlp $installed downloaded — restart the app to use it'
+        : 'yt-dlp $running is up to date';
   }
 
   @override
@@ -126,14 +184,27 @@ class _DartMusicService implements MusicService {
   }
 
   @override
+  Future<StreamInfo> getStreamInfo(String videoId) async =>
+      StreamInfo(await getStreamUrl(videoId), _defaultStreamHeaders);
+
+  @override
+  Future<String> updateExtractor() async => 'Not supported by the Dart extractor';
+
+  @override
   Future<String> getStreamUrl(String videoId) async {
     final manifest = await _yt.videos.streams.getManifest(videoId);
-    final audioStreams = manifest.audioOnly;
-    if (audioStreams.isEmpty) {
+    var candidates = manifest.audioOnly.toList();
+    if (candidates.isEmpty) {
       throw Exception('No audio streams for $videoId');
     }
+    if (Platform.isIOS) {
+      // AVPlayer cannot decode WebM/Opus — restrict to MP4/AAC when available.
+      final mp4 =
+          candidates.where((s) => s.container == StreamContainer.mp4).toList();
+      if (mp4.isNotEmpty) candidates = mp4;
+    }
 
-    final sorted = audioStreams.toList()
+    final sorted = candidates
       ..sort((a, b) => a.bitrate.compareTo(b.bitrate));
 
     switch (_audioQuality) {
@@ -142,7 +213,7 @@ class _DartMusicService implements MusicService {
       case AudioQuality.medium:
         return sorted[sorted.length ~/ 2].url.toString();
       case AudioQuality.high:
-        return audioStreams.withHighestBitrate().url.toString();
+        return sorted.last.url.toString();
     }
   }
 
