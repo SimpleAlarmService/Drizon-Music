@@ -74,7 +74,16 @@ void main() async {
     ..onTrackStarted = metadata.prefetch
     ..localFileFor = downloads.localPath
     ..localCoverFor = downloads.localCover
-    ..cacheFor = downloads.cacheForPlayback;
+    ..cacheFor = downloads.cacheForPlayback
+    ..moreLike = (seed) async => [
+          for (final i in await ytm.related(YtmItem(
+              videoId: seed.videoId,
+              title: seed.title,
+              artist: seed.artist,
+              thumbnail: seed.thumbnail,
+              kind: YtmKind.song)))
+            i.toTrack()
+        ];
   await player.restoreState();
 
   runApp(

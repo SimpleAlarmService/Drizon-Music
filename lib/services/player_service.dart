@@ -54,6 +54,49 @@ class PlayerService extends ChangeNotifier {
   /// (fallback when streaming fails).
   Future<String?> Function(Track track)? cacheFor;
 
+  /// More songs like [seed], used to keep playing when the queue runs out.
+  Future<List<Track>> Function(Track seed)? moreLike;
+
+  // ── Sleep timer & speed ──────────────────────────────────────────────────────
+
+  Timer? _sleepTimer;
+  DateTime? _sleepAt;
+  bool _sleepAfterTrack = false;
+  double _speed = 1.0;
+
+  DateTime? get sleepAt => _sleepAt;
+  bool get sleepAfterTrack => _sleepAfterTrack;
+  bool get sleepTimerActive => _sleepAt != null || _sleepAfterTrack;
+  double get speed => _speed;
+
+  void setSleepTimer(Duration? d) {
+    _sleepTimer?.cancel();
+    _sleepAfterTrack = false;
+    _sleepAt = d == null ? null : DateTime.now().add(d);
+    if (d != null) {
+      _sleepTimer = Timer(d, () {
+        _sleepAt = null;
+        _player.pause();
+        notifyListeners();
+      });
+    }
+    notifyListeners();
+  }
+
+  /// Pause when the current track ends instead of moving on.
+  void sleepAtEndOfTrack() {
+    _sleepTimer?.cancel();
+    _sleepAt = null;
+    _sleepAfterTrack = true;
+    notifyListeners();
+  }
+
+  Future<void> setSpeed(double v) async {
+    _speed = v;
+    await _player.setSpeed(v);
+    notifyListeners();
+  }
+
   // ── Constructor ──────────────────────────────────────────────────────────────
 
   PlayerService(this._music, this._storage, this._settings) {
@@ -228,17 +271,42 @@ class PlayerService extends ChangeNotifier {
   // ── Auto-advance ─────────────────────────────────────────────────────────────
 
   Future<void> _onTrackCompleted() async {
+    if (_sleepAfterTrack) {
+      _sleepAfterTrack = false;
+      await _player.pause();
+      notifyListeners();
+      return;
+    }
     if (!_settings.settings.autoplay) return;
     if (_queue.isEmpty) return;
-    final next = _nextIndex(_currentIndex);
+    final next = _nextIndex(_currentIndex) ?? await _extendQueue();
     if (next != null) await _loadAndPlay(next);
+  }
+
+  /// Queue ended: append songs like the last one and return the first new index.
+  Future<int?> _extendQueue() async {
+    if (!_settings.settings.radio || moreLike == null || _queue.isEmpty) return null;
+    if (_repeatMode == RepeatMode.all) return null;
+    try {
+      final seed = _queue.last;
+      final have = _queue.map((t) => t.videoId).toSet();
+      final more = (await moreLike!(seed)).where((t) => !have.contains(t.videoId)).take(15).toList();
+      if (more.isEmpty) return null;
+      final first = _queue.length;
+      _queue = [..._queue, ...more];
+      notifyListeners();
+      return first;
+    } catch (e) {
+      debugPrint('[PlayerService] could not extend queue: $e');
+      return null;
+    }
   }
 
   // ── Next / Prev ──────────────────────────────────────────────────────────────
 
   Future<void> next() async {
     if (_queue.isEmpty) return;
-    final next = _nextIndex(_currentIndex);
+    final next = _nextIndex(_currentIndex) ?? await _extendQueue();
     if (next != null) await _loadAndPlay(next);
   }
 

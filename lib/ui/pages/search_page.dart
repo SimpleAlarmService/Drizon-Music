@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/track.dart';
 import '../../services/engines/ytmusic_client.dart';
 import '../../services/music_service.dart';
@@ -30,6 +31,8 @@ class _SearchPageState extends State<SearchPage> {
   int _requestId = 0; // discards responses that arrive out of order
   int _suggestId = 0;
 
+  static const _recentKey = 'drizonRecentSearches';
+  List<String> _recent = const [];
   bool _videoMode = false;
   Future<List<YtmItem>>? _videos; // fetched lazily, only if the video tab is opened
   List<Track> _results = const [];
@@ -38,6 +41,25 @@ class _SearchPageState extends State<SearchPage> {
   bool _loading = false;
   String? _error;
   String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((p) {
+      if (mounted) setState(() => _recent = p.getStringList(_recentKey) ?? const []);
+    });
+  }
+
+  Future<void> _remember(String q) async {
+    final next = [q, ..._recent.where((e) => e != q)].take(12).toList();
+    setState(() => _recent = next);
+    (await SharedPreferences.getInstance()).setStringList(_recentKey, next);
+  }
+
+  Future<void> _clearRecent() async {
+    setState(() => _recent = const []);
+    (await SharedPreferences.getInstance()).remove(_recentKey);
+  }
 
   @override
   void dispose() {
@@ -83,6 +105,7 @@ class _SearchPageState extends State<SearchPage> {
       _loading = q.isNotEmpty;
     });
     if (q.isEmpty) return;
+    _remember(q);
     if (_videoMode) _loadVideos();
     try {
       final tracks = await context.read<MusicService>().search(q);
@@ -171,12 +194,39 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Widget _body() {
+    final pal = context.pal;
     if (_loading) return const Center(child: CupertinoActivityIndicator(radius: 14));
     if (_error != null) {
       return _Message(icon: CupertinoIcons.exclamationmark_circle, text: _error!);
     }
     if (_query.isEmpty) {
-      return const _Message(icon: CupertinoIcons.search, text: '좋아하는 음악을 검색해 보세요');
+      if (_recent.isEmpty) {
+        return const _Message(icon: CupertinoIcons.search, text: '좋아하는 음악을 검색해 보세요');
+      }
+      return ListView(
+        padding: EdgeInsets.only(bottom: ShellInsets.of(context)),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+            child: Row(
+              children: [
+                Expanded(child: Text('최근 검색', style: Type.title(pal).copyWith(fontSize: 20))),
+                CupertinoButton(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  onPressed: _clearRecent,
+                  child: const Text('지우기', style: TextStyle(fontSize: 14)),
+                ),
+              ],
+            ),
+          ),
+          for (final q in _recent)
+            ListTile(
+              leading: Icon(CupertinoIcons.clock, color: pal.secondaryLabel, size: 20),
+              title: Text(q, style: Type.row(pal)),
+              onTap: () => _search(q),
+            ),
+        ],
+      );
     }
     if (_results.isEmpty) {
       return const _Message(icon: CupertinoIcons.music_note, text: '결과가 없어요');

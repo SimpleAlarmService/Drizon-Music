@@ -431,6 +431,16 @@ class YtmClient {
     return [for (final e in indexed.take(40)) e.value.$1];
   }
 
+  /// More songs to play after [seed]. YouTube Music's own radio mix is empty
+  /// for anonymous sessions (only the seed comes back), so this uses the album
+  /// route with the seed's artist: other songs by the same artist.
+  Future<List<YtmItem>> related(YtmItem seed) async {
+    final first = seed.artist.split(RegExp(r',| & ')).first.trim();
+    if (first.isEmpty) return const [];
+    final songs = await search(first);
+    return songs.where((i) => i.videoId != seed.videoId).toList();
+  }
+
   /// Videos only (music videos, stages, fancams…), using the "Videos" filter chip.
   Future<List<YtmItem>> searchVideos(String query) async {
     final q = query.trim();

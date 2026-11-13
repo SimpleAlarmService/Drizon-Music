@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../models/playlist.dart';
 import '../../models/track.dart';
@@ -106,6 +107,14 @@ Future<void> showTrackActions(
               child: Text(dl == DownloadStatus.failed ? '다운로드 다시 시도' : '다운로드'),
             ),
         },
+        CupertinoActionSheetAction(
+          onPressed: () {
+            Navigator.pop(ctx);
+            Clipboard.setData(
+                ClipboardData(text: 'https://music.youtube.com/watch?v=${track.videoId}'));
+          },
+          child: const Text('링크 복사'),
+        ),
         if (fromPlaylist != null)
           CupertinoActionSheetAction(
             isDestructiveAction: true,

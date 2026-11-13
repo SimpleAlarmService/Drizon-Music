@@ -73,6 +73,11 @@ class _SettingsPageState extends State<SettingsPage> {
                     value: s.autoplay, onChanged: service.setAutoplay),
               ),
               CupertinoListTile(
+                title: const Text('비슷한 곡 이어 듣기'),
+                subtitle: const Text('대기열이 끝나면 같은 아티스트의 곡을 이어서 재생'),
+                trailing: CupertinoSwitch(value: s.radio, onChanged: service.setRadio),
+              ),
+              CupertinoListTile(
                 title: const Text('음질'),
                 additionalInfo: Text(s.audioQuality.label),
                 trailing: const CupertinoListTileChevron(),

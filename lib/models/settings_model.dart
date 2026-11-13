@@ -4,6 +4,7 @@
 class AppSettings {
   // ── Playback ──────────────────────────────────────────────────────────────
   final bool autoplay;
+  final bool radio; // keep playing similar songs when the queue ends
   final AudioQuality audioQuality;
   final String repeatMode; // 'off' | 'one' | 'all'
 
@@ -27,6 +28,7 @@ class AppSettings {
 
   const AppSettings({
     this.autoplay = true,
+    this.radio = true,
     this.audioQuality = AudioQuality.high,
     this.repeatMode = 'off',
     this.wifiOnly = false,
@@ -43,6 +45,7 @@ class AppSettings {
 
   AppSettings copyWith({
     bool? autoplay,
+    bool? radio,
     AudioQuality? audioQuality,
     String? repeatMode,
     bool? wifiOnly,
@@ -56,6 +59,7 @@ class AppSettings {
   }) =>
       AppSettings(
         autoplay: autoplay ?? this.autoplay,
+        radio: radio ?? this.radio,
         audioQuality: audioQuality ?? this.audioQuality,
         repeatMode: repeatMode ?? this.repeatMode,
         wifiOnly: wifiOnly ?? this.wifiOnly,
@@ -72,6 +76,7 @@ class AppSettings {
 
   factory AppSettings.fromMap(Map<String, dynamic> m) => AppSettings(
         autoplay: m['autoplay'] as bool? ?? true,
+        radio: m['radio'] as bool? ?? true,
         audioQuality: AudioQuality.fromString(m['audioQuality'] as String?),
         repeatMode: m['repeatMode'] as String? ?? 'off',
         wifiOnly: m['wifiOnly'] as bool? ?? false,
@@ -87,6 +92,7 @@ class AppSettings {
 
   Map<String, dynamic> toMap() => {
         'autoplay': autoplay,
+        'radio': radio,
         'audioQuality': audioQuality.value,
         'repeatMode': repeatMode,
         'wifiOnly': wifiOnly,

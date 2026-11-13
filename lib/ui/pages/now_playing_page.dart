@@ -502,6 +502,8 @@ class _BottomBar extends StatelessWidget {
               tint: lyrics ? Colors.white.withValues(alpha: 0.28) : null,
               onTap: onToggleLyrics,
             ),
+            const _SleepButton(),
+            const _SpeedButton(),
             GlassButton(
               icon: CupertinoIcons.list_bullet,
               color: Colors.white,
@@ -517,6 +519,97 @@ class _BottomBar extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+class _SleepButton extends StatelessWidget {
+  const _SleepButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final player = context.read<PlayerService>();
+    final active = context.select<PlayerService, bool>((p) => p.sleepTimerActive);
+    Future<void> pick() => showCupertinoModalPopup<void>(
+          context: context,
+          builder: (ctx) => CupertinoActionSheet(
+            title: const Text('수면 타이머'),
+            actions: [
+              for (final m in const [15, 30, 45, 60])
+                CupertinoActionSheetAction(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    player.setSleepTimer(Duration(minutes: m));
+                  },
+                  child: Text('$m분 후 멈춤'),
+                ),
+              CupertinoActionSheetAction(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  player.sleepAtEndOfTrack();
+                },
+                child: const Text('이 곡이 끝나면 멈춤'),
+              ),
+              if (active)
+                CupertinoActionSheetAction(
+                  isDestructiveAction: true,
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    player.setSleepTimer(null);
+                  },
+                  child: const Text('타이머 끄기'),
+                ),
+            ],
+            cancelButton: CupertinoActionSheetAction(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('취소'),
+            ),
+          ),
+        );
+    return GlassButton(
+      icon: active ? CupertinoIcons.moon_zzz_fill : CupertinoIcons.moon_zzz,
+      color: Colors.white,
+      size: 46,
+      iconSize: 22,
+      tint: active ? Colors.white.withValues(alpha: 0.28) : null,
+      onTap: pick,
+    );
+  }
+}
+
+class _SpeedButton extends StatelessWidget {
+  const _SpeedButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final player = context.read<PlayerService>();
+    final speed = context.select<PlayerService, double>((p) => p.speed);
+    return GlassButton(
+      icon: CupertinoIcons.speedometer,
+      color: Colors.white,
+      size: 46,
+      iconSize: 22,
+      tint: speed != 1.0 ? Colors.white.withValues(alpha: 0.28) : null,
+      onTap: () => showCupertinoModalPopup<void>(
+        context: context,
+        builder: (ctx) => CupertinoActionSheet(
+          title: const Text('재생 속도'),
+          actions: [
+            for (final v in const [0.75, 1.0, 1.25, 1.5, 2.0])
+              CupertinoActionSheetAction(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  player.setSpeed(v);
+                },
+                child: Text(v == 1.0 ? '보통 (1.0x)' : '${v}x${v == speed ? '  ✓' : ''}'),
+              ),
+          ],
+          cancelButton: CupertinoActionSheetAction(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('취소'),
+          ),
+        ),
+      ),
     );
   }
 }

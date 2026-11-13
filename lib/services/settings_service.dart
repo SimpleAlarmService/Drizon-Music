@@ -59,6 +59,8 @@ class SettingsService extends ChangeNotifier {
 
   // ── Convenience setters ───────────────────────────────────────────────────
 
+  void setRadio(bool value) => update((s) => s.copyWith(radio: value));
+
   void setAutoplay(bool value) =>
       update((s) => s.copyWith(autoplay: value));
 
