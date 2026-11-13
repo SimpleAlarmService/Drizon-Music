@@ -1,4 +1,8 @@
+#if os(macOS)
+import FlutterMacOS
+#else
 import Flutter
+#endif
 import Foundation
 
 /// Flutter ⇄ Python bridge. Same channel name/methods the Android NewPipe
@@ -38,6 +42,8 @@ enum ExtractorChannel {
                 }
             case "updateExtractor":
                 send(["op": "update"], result) { $0 }
+            case "checkExtractorUpdates":
+                send(["op": "check"], result) { $0 }
             case "extractorVersion":
                 send(["op": "version"], result) { $0 }
             default:

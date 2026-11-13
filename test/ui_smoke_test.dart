@@ -16,6 +16,7 @@ import 'package:oye/models/settings_model.dart';
 import 'package:oye/models/track.dart';
 import 'package:oye/models/video_streams.dart';
 import 'package:oye/services/download_service.dart';
+import 'package:oye/services/extractor_update_service.dart';
 import 'package:oye/services/engines/bugs_client.dart';
 import 'package:oye/services/engines/lrclib_client.dart';
 import 'package:oye/services/engines/ytmusic_client.dart';
@@ -249,6 +250,8 @@ void main() {
           ChangeNotifierProvider<MetadataService>.value(value: metadata),
           ChangeNotifierProvider<DownloadService>.value(value: downloads),
           Provider<YtmClient>.value(value: ytm),
+          ChangeNotifierProvider<ExtractorUpdateService>.value(
+              value: ExtractorUpdateService(music, prefs)),
         ],
         child: const DrizonApp(),
       ),

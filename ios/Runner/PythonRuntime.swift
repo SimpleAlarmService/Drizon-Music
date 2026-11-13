@@ -20,7 +20,9 @@ final class PythonRuntime {
 
     /// Start the interpreter in the background so the first search isn't slow.
     func warmUp() {
-        run { [self] in _ = try? ensureStarted() }
+        run { [self] in
+            do { try ensureStarted(); NSLog("[PythonRuntime] started") } catch { NSLog("[PythonRuntime] startup failed: \(error.localizedDescription)") }
+        }
     }
 
     /// Send {"op": ...} to drizon_extractor.handle and return its `data`.
@@ -63,7 +65,12 @@ final class PythonRuntime {
         guard let resources = Bundle.main.resourcePath else {
             throw PythonError(message: "Bundle resource path missing")
         }
+        #if os(macOS)
+        // macOS ships the whole runtime (stdlib included) as Python.framework.
+        let home = Bundle.main.privateFrameworksPath! + "/Python.framework/Versions/Current"
+        #else
         let home = resources + "/python"
+        #endif
         let libRoot = home + "/lib"
         guard let pyDir = (try? FileManager.default.contentsOfDirectory(atPath: libRoot))?
             .first(where: { $0.hasPrefix("python3.") }) else {

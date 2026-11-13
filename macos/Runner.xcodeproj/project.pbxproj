@@ -21,14 +21,22 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		21334FDC9FD5CE4554E6CBBA /* ExtractorChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F1BECA75C66CA355A832FDA /* ExtractorChannel.swift */; };
 		21612A28A398F569D41939F3 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2E1384527CDE8627F5DB92A3 /* Pods_RunnerTests.framework */; };
+		24ED32FB79741C53870F5D6E /* Python.xcframework in Bundle Framework */ = {isa = PBXBuildFile; fileRef = CF672BA05EA7AA7A0C56131A /* Python.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		331C80D8294CF71000263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C80D7294CF71000263BE5 /* RunnerTests.swift */; };
 		335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */ = {isa = PBXBuildFile; fileRef = 335BBD1A22A9A15E00E9071D /* GeneratedPluginRegistrant.swift */; };
 		33CC10F12044A3C60003C045 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CC10F02044A3C60003C045 /* AppDelegate.swift */; };
 		33CC10F32044A3C60003C045 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 33CC10F22044A3C60003C045 /* Assets.xcassets */; };
 		33CC10F62044A3C60003C045 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 33CC10F42044A3C60003C045 /* MainMenu.xib */; };
 		33CC11132044BFA00003C045 /* MainFlutterWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CC11122044BFA00003C045 /* MainFlutterWindow.swift */; };
+		351FC8FFD4458046DE96246E /* PythonRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E9CDCA7F07FE1EAFAD67778 /* PythonRuntime.swift */; };
+		626E9CD00A101C42EC4D9CF4 /* app in Resources */ = {isa = PBXBuildFile; fileRef = 85151E3CD69E17BB0FFEB344 /* app */; };
+		7D36F467143272A216B2F306 /* app_packages in Resources */ = {isa = PBXBuildFile; fileRef = 2ADA5E506B3576094D91A4CC /* app_packages */; };
+		806A0430D4C1F3293A7ADE45 /* JSSolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5539B106B882614AB4B25A7F /* JSSolver.swift */; };
+		948EDD9465DEEAAD01F25D6C /* Python.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = CF672BA05EA7AA7A0C56131A /* Python.xcframework */; };
 		D7C853D6773FD71305BE3BA4 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8AFF119C962B6C022092F5BE /* Pods_Runner.framework */; };
+		F5A6BB44C71C3A72B63978E8 /* VideoMuxer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBAB513B8A1496F3B8D69D49 /* VideoMuxer.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -55,6 +63,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
+				24ED32FB79741C53870F5D6E /* Python.xcframework in Bundle Framework */,
 			);
 			name = "Bundle Framework";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -63,6 +72,9 @@
 
 /* Begin PBXFileReference section */
 		1713D6BCE240BD11BCE80FF8 /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
+		1AE58ECE3989D30BBE462F64 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
+		1E9CDCA7F07FE1EAFAD67778 /* PythonRuntime.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PythonRuntime.swift; path = ../ios/Runner/PythonRuntime.swift; sourceTree = "<group>"; };
+		2ADA5E506B3576094D91A4CC /* app_packages */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder; name = app_packages; path = ../ios/PythonApp/app_packages; sourceTree = "<group>"; };
 		2E1384527CDE8627F5DB92A3 /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		331C80D5294CF71000263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		331C80D7294CF71000263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
@@ -80,14 +92,19 @@
 		33E51913231747F40026EE4D /* DebugProfile.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DebugProfile.entitlements; sourceTree = "<group>"; };
 		33E51914231749380026EE4D /* Release.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.entitlements; path = Release.entitlements; sourceTree = "<group>"; };
 		33E5194F232828860026EE4D /* AppInfo.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = AppInfo.xcconfig; sourceTree = "<group>"; };
+		5539B106B882614AB4B25A7F /* JSSolver.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = JSSolver.swift; path = ../ios/Runner/JSSolver.swift; sourceTree = "<group>"; };
+		6F1BECA75C66CA355A832FDA /* ExtractorChannel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExtractorChannel.swift; path = ../ios/Runner/ExtractorChannel.swift; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		85151E3CD69E17BB0FFEB344 /* app */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder; name = app; path = ../ios/PythonApp/app; sourceTree = "<group>"; };
 		8AFF119C962B6C022092F5BE /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		A1E599AD3EDD65ABF90A22F1 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
 		C25ABC71E785C9382A042570 /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
+		CF672BA05EA7AA7A0C56131A /* Python.xcframework */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = wrapper.xcframework; path = Python.xcframework; sourceTree = "<group>"; };
 		E062E8ACF19244EFC892C419 /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
 		E4E65080B05D8F581CCEA33E /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
 		EEFBB29D8016C56A43F50D21 /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
+		FBAB513B8A1496F3B8D69D49 /* VideoMuxer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VideoMuxer.swift; path = ../ios/Runner/VideoMuxer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -104,6 +121,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D7C853D6773FD71305BE3BA4 /* Pods_Runner.framework in Frameworks */,
+				948EDD9465DEEAAD01F25D6C /* Python.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -138,6 +156,8 @@
 				33CC10EE2044A3C60003C045 /* Products */,
 				D73912EC22F37F3D000D13A0 /* Frameworks */,
 				A3A42E252471095EF8E46750 /* Pods */,
+				ACD47C8931B111F016A7EF60 /* Shared (iOS) */,
+				CF672BA05EA7AA7A0C56131A /* Python.xcframework */,
 			);
 			sourceTree = "<group>";
 		};
@@ -181,6 +201,7 @@
 				33E51914231749380026EE4D /* Release.entitlements */,
 				33CC11242044D66E0003C045 /* Resources */,
 				33BA886A226E78AF003329D5 /* Configs */,
+				1AE58ECE3989D30BBE462F64 /* Runner-Bridging-Header.h */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -198,6 +219,19 @@
 			name = Pods;
 			path = Pods;
 			sourceTree = "<group>";
+		};
+		ACD47C8931B111F016A7EF60 /* Shared (iOS) */ = {
+			isa = PBXGroup;
+			children = (
+				1E9CDCA7F07FE1EAFAD67778 /* PythonRuntime.swift */,
+				5539B106B882614AB4B25A7F /* JSSolver.swift */,
+				6F1BECA75C66CA355A832FDA /* ExtractorChannel.swift */,
+				FBAB513B8A1496F3B8D69D49 /* VideoMuxer.swift */,
+				85151E3CD69E17BB0FFEB344 /* app */,
+				2ADA5E506B3576094D91A4CC /* app_packages */,
+			);
+			name = "Shared (iOS)";
+			sourceTree = SOURCE_ROOT;
 		};
 		D73912EC22F37F3D000D13A0 /* Frameworks */ = {
 			isa = PBXGroup;
@@ -317,6 +351,8 @@
 			files = (
 				33CC10F32044A3C60003C045 /* Assets.xcassets in Resources */,
 				33CC10F62044A3C60003C045 /* MainMenu.xib in Resources */,
+				626E9CD00A101C42EC4D9CF4 /* app in Resources */,
+				7D36F467143272A216B2F306 /* app_packages in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -440,6 +476,10 @@
 				33CC11132044BFA00003C045 /* MainFlutterWindow.swift in Sources */,
 				33CC10F12044A3C60003C045 /* AppDelegate.swift in Sources */,
 				335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */,
+				351FC8FFD4458046DE96246E /* PythonRuntime.swift in Sources */,
+				806A0430D4C1F3293A7ADE45 /* JSSolver.swift in Sources */,
+				21334FDC9FD5CE4554E6CBBA /* ExtractorChannel.swift in Sources */,
+				F5A6BB44C71C3A72B63978E8 /* VideoMuxer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -580,6 +620,7 @@
 					"@executable_path/../Frameworks",
 				);
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Profile;
@@ -712,6 +753,7 @@
 					"@executable_path/../Frameworks",
 				);
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 			};
@@ -732,6 +774,7 @@
 					"@executable_path/../Frameworks",
 				);
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;

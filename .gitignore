@@ -48,3 +48,4 @@ app.*.map.json
 /ios/Python.xcframework/
 /ios/PythonApp/app_packages/*
 !/ios/PythonApp/app_packages/.gitkeep
+/macos/Python.xcframework/

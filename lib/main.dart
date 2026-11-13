@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'services/download_service.dart';
+import 'services/extractor_update_service.dart';
 import 'services/engines/bugs_client.dart';
 import 'services/engines/ytmusic_client.dart';
 import 'services/library_service.dart';
@@ -55,6 +56,8 @@ void main() async {
   // Keep extractor behaviour in sync with the settings screen.
   settings.addListener(() => music.applySettings(settings.settings));
 
+  final extractorUpdates = ExtractorUpdateService(music, prefs);
+
   final downloads = DownloadService(prefs, music,
       directory: getApplicationDocumentsDirectory);
   await downloads.init();
@@ -81,10 +84,13 @@ void main() async {
         ChangeNotifierProvider<MetadataService>.value(value: metadata),
         ChangeNotifierProvider<DownloadService>.value(value: downloads),
         Provider<YtmClient>.value(value: ytm),
+        ChangeNotifierProvider<ExtractorUpdateService>.value(value: extractorUpdates),
       ],
       child: const DrizonApp(),
     ),
   );
+
+  extractorUpdates.checkOnLaunch();
 }
 
 class DrizonApp extends StatelessWidget {

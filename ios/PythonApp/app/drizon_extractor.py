@@ -2,6 +2,7 @@
 
     handle('{"op": "search", "query": "...", "limit": 20}')
     handle('{"op": "stream", "videoId": "...", "clientType": "WEB", "quality": "high"}')
+    handle('{"op": "check"}')    # compare running yt-dlp / yt-dlp-ejs with PyPI
     handle('{"op": "update"}')   # fetch newer yt-dlp from PyPI; applies on next launch
 
 Never raises: always returns {"ok": true, "data": ...} or {"ok": false, "error": "..."}.
@@ -12,6 +13,7 @@ import glob
 import hashlib
 import json
 import os
+import re
 import sys
 import traceback
 import urllib.request
@@ -191,15 +193,22 @@ def _fetch_wheel(pkg, version=None):
     return ver, meta
 
 
+def _ejs_pin(meta):
+    """The yt-dlp-ejs version yt-dlp was tested with (PyPI quotes extras with "")."""
+    for dep in meta['info'].get('requires_dist') or []:
+        if dep.startswith('yt-dlp-ejs==') and 'extra == "default"' in dep.replace("'", '"'):
+            return dep.split('==')[1].split(';')[0].strip()
+    return ''
+
+
 def _update(_req):
     if not _OVERLAY:
         raise RuntimeError('overlay directory not configured')
     ver, meta = _fetch_wheel('yt-dlp')
     # yt-dlp pins the exact yt-dlp-ejs it was tested with.
-    for dep in meta['info'].get('requires_dist') or []:
-        if dep.startswith('yt-dlp-ejs==') and 'extra == \'default\'' in dep:
-            _fetch_wheel('yt-dlp-ejs', dep.split('==')[1].split(';')[0].strip())
-            break
+    pin = _ejs_pin(meta)
+    if pin:
+        _fetch_wheel('yt-dlp-ejs', pin)
     # Keep only the newest wheel of each package.
     for pkg in ('yt_dlp-', 'yt_dlp_ejs-'):
         wheels = sorted(glob.glob(os.path.join(_OVERLAY, pkg + '*.whl')))
@@ -209,11 +218,53 @@ def _update(_req):
             'restartRequired': ver != yt_dlp.version.__version__}
 
 
+def _vtuple(v):
+    return tuple(int(n) for n in re.findall(r'\d+', v or ''))
+
+
+def _running_ejs():
+    try:
+        import importlib.metadata as md
+        return md.version('yt-dlp-ejs')
+    except Exception:  # noqa: BLE001
+        return ''
+
+
+def _pending(prefix):
+    """Version of the newest downloaded wheel (applies after restart), or ''."""
+    best = ''
+    for whl in glob.glob(os.path.join(_OVERLAY, prefix + '-*.whl')) if _OVERLAY else []:
+        v = os.path.basename(whl).split('-')[1]
+        if _vtuple(v) > _vtuple(best):
+            best = v
+    return best
+
+
+def _check(_req):
+    meta = _http_json('https://pypi.org/pypi/yt-dlp/json')
+    latest = {'yt-dlp': meta['info']['version'], 'yt-dlp-ejs': _ejs_pin(meta)}
+    current = {'yt-dlp': yt_dlp.version.__version__, 'yt-dlp-ejs': _running_ejs()}
+    pending = {'yt-dlp': _pending('yt_dlp'), 'yt-dlp-ejs': _pending('yt_dlp_ejs')}
+    out = []
+    for name in ('yt-dlp', 'yt-dlp-ejs'):
+        cur, new, pend = current[name], latest[name], pending[name]
+        newest_have = max(cur, pend, key=_vtuple)
+        out.append({
+            'name': name,
+            'current': cur,
+            'latest': new,
+            'updateAvailable': bool(new) and _vtuple(new) > _vtuple(newest_have),
+            'restartPending': bool(pend) and _vtuple(pend) > _vtuple(cur),
+        })
+    return {'components': out}
+
+
 def _version(_req):
     return {'ytdlp': yt_dlp.version.__version__}
 
 
-_OPS = {'search': _search, 'stream': _stream, 'video': _video, 'update': _update, 'version': _version}
+_OPS = {'search': _search, 'stream': _stream, 'video': _video, 'update': _update,
+        'check': _check, 'version': _version}
 
 
 def handle(request_json: str) -> str:

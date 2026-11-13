@@ -9,6 +9,8 @@ class MainFlutterWindow: NSWindow {
     self.setFrame(windowFrame, display: true)
 
     RegisterGeneratedPlugins(registry: flutterViewController)
+    ExtractorChannel.register(with: flutterViewController.engine.binaryMessenger)
+    PythonRuntime.shared.warmUp()
 
     super.awakeFromNib()
   }

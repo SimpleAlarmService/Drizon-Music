@@ -10,7 +10,7 @@ import 'engines/ytmusic_client.dart';
 ///
 /// Extractor behaviour is controlled at runtime via [applySettings].
 /// Android → NewPipe via MethodChannel.
-/// iOS     → embedded Python + yt-dlp via MethodChannel.
+/// iOS, macOS → embedded Python + yt-dlp via MethodChannel.
 abstract class MusicService {
   Future<List<Track>> search(String query);
   Future<String> getStreamUrl(String videoId);
@@ -25,7 +25,7 @@ abstract class MusicService {
   /// Joins a video-only file and an audio file into [output] (MP4, no re-encode).
   Future<void> muxVideo(String video, String audio, String output);
 
-  /// iOS only: download the newest yt-dlp (applied on next launch).
+  /// iOS and macOS: download the newest yt-dlp (applied on next launch).
   /// Returns a human-readable status line.
   Future<String> updateExtractor();
 
@@ -104,7 +104,7 @@ class _NativeMusicService implements MusicService {
     _audioQuality = s.audioQuality;
   }
 
-  String get _engine => Platform.isIOS ? 'yt-dlp' : 'NewPipe';
+  String get _engine => (Platform.isIOS || Platform.isMacOS) ? 'yt-dlp' : 'NewPipe';
 
   @override
   Future<List<Track>> search(String query) async {
@@ -146,7 +146,7 @@ class _NativeMusicService implements MusicService {
       'clientType': _clientType.value,
       'quality': _audioQuality.value,
     };
-    if (Platform.isIOS) {
+    if ((Platform.isIOS || Platform.isMacOS)) {
       // yt-dlp tells us which headers the URL needs (they depend on the client).
       final raw = await _ch.invokeMapMethod<String, dynamic>('getStreamInfo', args);
       final url = raw?['url'] as String?;
@@ -181,7 +181,7 @@ class _NativeMusicService implements MusicService {
 
   @override
   Future<String> updateExtractor() async {
-    if (!Platform.isIOS) return 'Only available on iOS';
+    if (!(Platform.isIOS || Platform.isMacOS)) return 'Only available on iOS and macOS';
     final r = await _ch.invokeMapMethod<String, dynamic>('updateExtractor');
     final installed = r?['installed'];
     final running = r?['running'];
