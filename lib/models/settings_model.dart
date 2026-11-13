@@ -13,7 +13,6 @@ class AppSettings {
 
   // ── Extractor ─────────────────────────────────────────────────────────────
   final ExtractorType primaryExtractor;
-  final bool enableFallback;
   final ClientType clientType;
 
   // ── Cache ─────────────────────────────────────────────────────────────────
@@ -33,7 +32,6 @@ class AppSettings {
     this.wifiOnly = false,
     this.dataSaver = false,
     this.primaryExtractor = ExtractorType.auto,
-    this.enableFallback = true,
     this.clientType = ClientType.android,
     this.cacheEnabled = true,
     this.cacheSizeMb = 256,
@@ -50,7 +48,6 @@ class AppSettings {
     bool? wifiOnly,
     bool? dataSaver,
     ExtractorType? primaryExtractor,
-    bool? enableFallback,
     ClientType? clientType,
     bool? cacheEnabled,
     int? cacheSizeMb,
@@ -64,7 +61,6 @@ class AppSettings {
         wifiOnly: wifiOnly ?? this.wifiOnly,
         dataSaver: dataSaver ?? this.dataSaver,
         primaryExtractor: primaryExtractor ?? this.primaryExtractor,
-        enableFallback: enableFallback ?? this.enableFallback,
         clientType: clientType ?? this.clientType,
         cacheEnabled: cacheEnabled ?? this.cacheEnabled,
         cacheSizeMb: cacheSizeMb ?? this.cacheSizeMb,
@@ -82,7 +78,6 @@ class AppSettings {
         dataSaver: m['dataSaver'] as bool? ?? false,
         primaryExtractor:
             ExtractorType.fromString(m['primaryExtractor'] as String?),
-        enableFallback: m['enableFallback'] as bool? ?? true,
         clientType: ClientType.fromString(m['clientType'] as String?),
         cacheEnabled: m['cacheEnabled'] as bool? ?? true,
         cacheSizeMb: m['cacheSizeMb'] as int? ?? 256,
@@ -97,7 +92,6 @@ class AppSettings {
         'wifiOnly': wifiOnly,
         'dataSaver': dataSaver,
         'primaryExtractor': primaryExtractor.value,
-        'enableFallback': enableFallback,
         'clientType': clientType.value,
         'cacheEnabled': cacheEnabled,
         'cacheSizeMb': cacheSizeMb,
@@ -124,8 +118,7 @@ enum AudioQuality {
 
 enum ExtractorType {
   auto('auto', 'Auto (recommended)'),
-  newpipe('newpipe', 'NewPipe  (Android native)'),
-  innertube('innertube', 'InnerTube  (Dart)');
+  newpipe('newpipe', 'NewPipe  (Android native)');
 
   const ExtractorType(this.value, this.label);
   final String value;

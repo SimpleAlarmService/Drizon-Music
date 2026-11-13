@@ -11,9 +11,6 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.8
 
-  # Fallback YouTube extractor (pure Dart). iOS primarily uses embedded Python + yt-dlp.
-  youtube_explode_dart: ^3.0.5
-
   # Audio playback with queue, shuffle, repeat
   just_audio: ^0.9.40
 

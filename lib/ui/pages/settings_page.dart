@@ -143,11 +143,6 @@ class _SettingsPageState extends State<SettingsPage> {
                   if (v != null) service.setClientType(v);
                 },
               ),
-              CupertinoListTile(
-                title: const Text('실패 시 Dart 추출기로 대체'),
-                trailing: CupertinoSwitch(
-                    value: s.enableFallback, onChanged: service.setEnableFallback),
-              ),
               if (Platform.isIOS)
                 CupertinoListTile(
                   title: const Text('yt-dlp 업데이트'),
@@ -208,7 +203,6 @@ class _SettingsPageState extends State<SettingsPage> {
   String _engineLabel(ExtractorType t) => switch (t) {
         ExtractorType.auto => '자동',
         ExtractorType.newpipe => Platform.isIOS ? 'yt-dlp' : 'NewPipe',
-        ExtractorType.innertube => 'Dart',
       };
 
   String _clientLabel(ClientType t) => switch (t) {

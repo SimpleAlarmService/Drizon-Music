@@ -67,9 +67,6 @@ class SettingsService extends ChangeNotifier {
   void setPrimaryExtractor(ExtractorType value) =>
       update((s) => s.copyWith(primaryExtractor: value));
 
-  void setEnableFallback(bool value) =>
-      update((s) => s.copyWith(enableFallback: value));
-
   void setClientType(ClientType value) =>
       update((s) => s.copyWith(clientType: value));
 
