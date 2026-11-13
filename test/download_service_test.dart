@@ -31,6 +31,8 @@ class _Music implements MusicService {
   @override
   Future<String> getStreamUrl(String id) async => url;
   @override
+  Future<List<Track>> playlist(String id, {int limit = 30}) async => const [];
+  @override
   Future<List<Track>> search(String q) async => const [];
   @override
   Future<String> updateExtractor() async => '';

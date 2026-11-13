@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
@@ -13,7 +14,11 @@ class PlayerService extends ChangeNotifier {
   final MusicService _music;
   final StorageService _storage;
   final SettingsService _settings;
-  final AudioPlayer _player = AudioPlayer();
+  // Headers go straight to AVFoundation / ExoPlayer. just_audio's local proxy
+  // server (the default for requests with headers) has a start-up race that
+  // surfaced as "LateInitializationError: Field '_server' has not been
+  // initialized" on every track.
+  final AudioPlayer _player = AudioPlayer(useProxyForRequestHeaders: false);
   final Random _rng = Random();
 
   // ── Core state ───────────────────────────────────────────────────────────────
@@ -44,6 +49,10 @@ class PlayerService extends ChangeNotifier {
 
   /// Saved cover of a downloaded track (lock screen art that works offline).
   String? Function(String videoId)? localCoverFor;
+
+  /// Downloads a track's audio into a temporary cache and returns the file path
+  /// (fallback when streaming fails).
+  Future<String?> Function(Track track)? cacheFor;
 
   // ── Constructor ──────────────────────────────────────────────────────────────
 
@@ -154,6 +163,12 @@ class PlayerService extends ChangeNotifier {
       final local = localFileFor?.call(track.videoId);
       if (local != null) {
         await _player.setAudioSource(AudioSource.file(local, tag: tag));
+      } else if (attempt > 0 && cacheFor != null) {
+        // Streaming failed once: download the audio first, then play the file
+        // (the way a desktop downloader would), which sidesteps stream-side quirks.
+        final path = await cacheFor!(track);
+        if (path == null) throw Exception('Could not cache audio for playback');
+        await _player.setAudioSource(AudioSource.file(path, tag: tag));
       } else {
         final stream = await _music.getStreamInfo(track.videoId);
         await _player.setAudioSource(
@@ -162,7 +177,13 @@ class PlayerService extends ChangeNotifier {
       }
 
       _isSwitching = false;
-      await _player.play();
+      _isLoading = false; // loaded: show play/pause, not the spinner
+      notifyListeners();
+      // play() only completes when playback stops, so it must not be awaited
+      // (the spinner and the history entry would wait for the end of the track).
+      unawaited(_player.play().catchError((Object e) {
+        debugPrint('[PlayerService] play error for ${track.videoId}: $e');
+      }));
       await _storage.addToHistory(track);
       onHistoryChanged?.call();
       _persistState();

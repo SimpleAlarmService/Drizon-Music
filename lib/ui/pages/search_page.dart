@@ -11,9 +11,11 @@ import '../widgets/actions.dart';
 import '../glass/liquid_glass.dart';
 import '../widgets/large_title.dart';
 import '../widgets/track_row.dart';
+import 'video_player_page.dart';
+import 'videos_page.dart' show VideoTile;
 
-/// Search: YouTube Music suggestions while typing, results on submit,
-/// grouped into songs (with album art) and videos.
+/// Search: suggestions while typing, results on submit, split into a music tab
+/// (songs to play) and a video tab (music videos, stages, fancams to watch).
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
 
@@ -28,6 +30,8 @@ class _SearchPageState extends State<SearchPage> {
   int _requestId = 0; // discards responses that arrive out of order
   int _suggestId = 0;
 
+  bool _videoMode = false;
+  Future<List<YtmItem>>? _videos; // fetched lazily, only if the video tab is opened
   List<Track> _results = const [];
   List<String> _suggestions = const [];
   bool _typing = false; // showing suggestions instead of results
@@ -74,10 +78,12 @@ class _SearchPageState extends State<SearchPage> {
       _typing = false;
       _query = q;
       _results = const [];
+      _videos = null;
       _error = null;
       _loading = q.isNotEmpty;
     });
     if (q.isEmpty) return;
+    if (_videoMode) _loadVideos();
     try {
       final tracks = await context.read<MusicService>().search(q);
       if (!mounted || id != _requestId) return;
@@ -94,6 +100,18 @@ class _SearchPageState extends State<SearchPage> {
     }
   }
 
+  void _loadVideos() {
+    if (_query.isEmpty || _videos != null) return;
+    _videos = context.read<YtmClient>().searchVideos(_query);
+  }
+
+  void _setMode(bool video) {
+    setState(() {
+      _videoMode = video;
+      if (video) _loadVideos();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -107,7 +125,7 @@ class _SearchPageState extends State<SearchPage> {
             child: CupertinoSearchTextField(
               controller: _controller,
               focusNode: _focus,
-              placeholder: '아티스트, 노래, 앨범',
+              placeholder: '아티스트, 노래, 영상',
               backgroundColor: Colors.transparent,
               padding: const EdgeInsetsDirectional.fromSTEB(8, 12, 8, 12),
               onChanged: _onChanged,
@@ -119,7 +137,21 @@ class _SearchPageState extends State<SearchPage> {
             ),
           ),
         ),
-        Expanded(child: _typing ? _suggestionList() : _body()),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: SizedBox(
+            width: double.infinity,
+            child: CupertinoSlidingSegmentedControl<bool>(
+              groupValue: _videoMode,
+              children: const {
+                false: Padding(padding: EdgeInsets.symmetric(vertical: 6), child: Text('음악')),
+                true: Padding(padding: EdgeInsets.symmetric(vertical: 6), child: Text('비디오')),
+              },
+              onValueChanged: (v) => _setMode(v ?? false),
+            ),
+          ),
+        ),
+        Expanded(child: _typing ? _suggestionList() : (_videoMode ? _videoBody() : _body())),
       ],
     );
   }
@@ -139,7 +171,6 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Widget _body() {
-    final pal = context.pal;
     if (_loading) return const Center(child: CupertinoActivityIndicator(radius: 14));
     if (_error != null) {
       return _Message(icon: CupertinoIcons.exclamationmark_circle, text: _error!);
@@ -151,38 +182,54 @@ class _SearchPageState extends State<SearchPage> {
       return const _Message(icon: CupertinoIcons.music_note, text: '결과가 없어요');
     }
 
-    // Songs come first from the engine; they're the ones with album art.
-    final songs = _results.where((t) => t.albumArt != null).toList();
-    final videos = _results.where((t) => t.albumArt == null).toList();
     final player = context.read<PlayerService>();
-
-    Widget section(String title) => Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-          child: Text(title, style: Type.title(pal).copyWith(fontSize: 20)),
-        );
-    Widget row(Track t, List<Track> queue, int i) => FadeSlideIn(
-          index: i,
-          child: TrackRow(
-            track: t,
-            onTap: () => player.playTrack(t, queue: queue, index: i),
-            onMore: () => showTrackActions(context, t),
-          ),
-        );
-
-    return ListView(
+    return ListView.builder(
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       padding: EdgeInsets.only(bottom: ShellInsets.of(context)),
-      children: [
-        if (songs.isNotEmpty) ...[
-          section('노래'),
-          for (var i = 0; i < songs.length; i++) row(songs[i], songs, i),
-        ],
-        if (videos.isNotEmpty) ...[
-          if (songs.isNotEmpty) section('뮤직비디오 · 동영상'),
-          for (var i = 0; i < videos.length; i++) row(videos[i], videos, i),
-        ],
-        const SizedBox(height: 16),
-      ],
+      itemCount: _results.length,
+      itemBuilder: (context, i) => FadeSlideIn(
+        index: i,
+        child: TrackRow(
+          track: _results[i],
+          onTap: () => player.playTrack(_results[i], queue: _results, index: i),
+          onMore: () => showTrackActions(context, _results[i]),
+        ),
+      ),
+    );
+  }
+
+  Widget _videoBody() {
+    if (_query.isEmpty) {
+      return const _Message(icon: CupertinoIcons.play_rectangle, text: '뮤직비디오, 무대, 직캠을 검색해 보세요');
+    }
+    final future = _videos;
+    if (future == null) return const SizedBox.shrink();
+    return FutureBuilder<List<YtmItem>>(
+      future: future,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const Center(child: CupertinoActivityIndicator(radius: 14));
+        }
+        if (snap.hasError) {
+          return const _Message(
+              icon: CupertinoIcons.exclamationmark_circle, text: '검색에 실패했어요. 잠시 후 다시 시도해 주세요.');
+        }
+        final items = snap.data ?? const [];
+        if (items.isEmpty) return const _Message(icon: CupertinoIcons.play_rectangle, text: '결과가 없어요');
+        return ListView.builder(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: EdgeInsets.fromLTRB(16, 4, 16, 24 + ShellInsets.of(context)),
+          itemCount: items.length,
+          itemBuilder: (context, i) => FadeSlideIn(
+            index: i,
+            child: VideoTile(
+              item: items[i],
+              onTap: () => Navigator.of(context, rootNavigator: true)
+                  .push(VideoPlayerPage.route(items[i])),
+            ),
+          ),
+        );
+      },
     );
   }
 }

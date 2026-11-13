@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../services/player_service.dart';
+import '../../theme.dart';
 import 'vinyl_record.dart';
 
 /// "Drizon Music" set in 에이투지체 (A2Z), with the "o" drawn as a vinyl record
-/// that spins while music plays. "Drizon" is heavy, "Music" light and red.
+/// that spins while music plays. "Drizon" is heavy and "Music" light; everything
+/// is white on dark and black on light.
 class DrizonLogo extends StatelessWidget {
   const DrizonLogo({
     super.key,
@@ -24,7 +26,8 @@ class DrizonLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ink = color ?? Theme.of(context).colorScheme.onSurface;
+    final pal = context.pal;
+    final ink = color ?? pal.label; // white (dark mode) / black (light mode)
     final playing = spinning ??
         (context.select<PlayerService?, bool>((p) => p?.isPlaying ?? false));
     final style = TextStyle(
@@ -60,7 +63,8 @@ class DrizonLogo extends StatelessWidget {
                 // Placed bottom-on-baseline, then lowered to the letters' bottom.
                 child: Transform.translate(
                   offset: Offset(0, drop),
-                  child: VinylRecord(size: record, spinning: playing),
+                  child: VinylRecord(
+                      size: record, spinning: playing, ink: ink, paper: pal.background),
                 ),
               ),
             ),
@@ -68,13 +72,7 @@ class DrizonLogo extends StatelessWidget {
             WidgetSpan(
               alignment: PlaceholderAlignment.baseline,
               baseline: TextBaseline.alphabetic,
-              child: ShaderMask(
-                blendMode: BlendMode.srcIn,
-                shaderCallback: (r) => const LinearGradient(
-                  colors: [Color(0xFFFF5F6D), Color(0xFFFA2D48)],
-                ).createShader(r),
-                child: Text('Music', style: light),
-              ),
+              child: Text('Music', style: light),
             ),
           ]),
         ),

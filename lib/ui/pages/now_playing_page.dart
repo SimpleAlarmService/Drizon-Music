@@ -48,35 +48,81 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
               onVerticalDragEnd: (d) {
                 if ((d.primaryVelocity ?? 0) > 600) Navigator.of(context).pop();
               },
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 28),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 8),
-                    _Grabber(onTap: () => Navigator.of(context).pop()),
-                    if (_lyrics) ...[
-                      const SizedBox(height: 12),
-                      _TitleRow(track: track, compact: true),
-                      Expanded(child: LyricsView(track: track)),
-                    ] else ...[
-                      const SizedBox(height: 20),
-                      Expanded(child: _BigArtwork(track: track)),
-                      const SizedBox(height: 28),
-                      _TitleRow(track: track),
-                    ],
-                    const SizedBox(height: 18),
-                    const _Scrubber(),
-                    const SizedBox(height: 14),
-                    const _Controls(),
-                    const SizedBox(height: 18),
-                    _BottomBar(
-                      lyrics: _lyrics,
-                      onToggleLyrics: () => setState(() => _lyrics = !_lyrics),
+              child: LayoutBuilder(builder: (context, box) {
+                // Wide windows (macOS, iPad landscape): cover or lyrics on the
+                // left, title and controls in a fixed-width column on the right,
+                // instead of stretching everything across the window.
+                final wide = box.maxWidth >= 860 && box.maxWidth > box.maxHeight * 1.15;
+                void toggleLyrics() => setState(() => _lyrics = !_lyrics);
+
+                if (wide) {
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(40, 8, 40, 8),
+                    child: Column(
+                      children: [
+                        _Grabber(onTap: () => Navigator.of(context).pop()),
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 24),
+                                  child: _lyrics
+                                      ? LyricsView(track: track)
+                                      : _BigArtwork(track: track),
+                                ),
+                              ),
+                              const SizedBox(width: 48),
+                              SizedBox(
+                                width: 440,
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    _TitleRow(track: track),
+                                    const SizedBox(height: 22),
+                                    const _Scrubber(),
+                                    const SizedBox(height: 18),
+                                    const _Controls(),
+                                    const SizedBox(height: 26),
+                                    _BottomBar(lyrics: _lyrics, onToggleLyrics: toggleLyrics),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                  ],
-                ),
-              ),
+                  );
+                }
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 28),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 8),
+                      _Grabber(onTap: () => Navigator.of(context).pop()),
+                      if (_lyrics) ...[
+                        const SizedBox(height: 12),
+                        _TitleRow(track: track, compact: true),
+                        Expanded(child: LyricsView(track: track)),
+                      ] else ...[
+                        const SizedBox(height: 20),
+                        Expanded(child: _BigArtwork(track: track)),
+                        const SizedBox(height: 28),
+                        _TitleRow(track: track),
+                      ],
+                      const SizedBox(height: 18),
+                      const _Scrubber(),
+                      const SizedBox(height: 14),
+                      const _Controls(),
+                      const SizedBox(height: 18),
+                      _BottomBar(lyrics: _lyrics, onToggleLyrics: toggleLyrics),
+                      const SizedBox(height: 8),
+                    ],
+                  ),
+                );
+              }),
             ),
           ),
         ],

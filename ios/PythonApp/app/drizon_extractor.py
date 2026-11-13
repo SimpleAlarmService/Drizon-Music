@@ -81,13 +81,79 @@ def _thumb(video_id: str) -> str:
     return f'https://i.ytimg.com/vi/{video_id}/mqdefault.jpg'
 
 
+_NOT_MUSIC = re.compile(
+    r"dance practice|dance|댄스|연습|노래방|karaoke|fancam|직캠|안무|챌린지|challenge|reaction|리액션|teaser|티저|"
+    r"behind|메이킹|making|interview|인터뷰|예능|라디오|radio|ep\.?\s?\d+|방송|"
+    r"쇼케이스|showcase|vlog|브이로그|해석|번역|tutorial|커버 ?영상|1\s?hour|1hr|loop|"
+    r"bass boosted|slowed|sped up|nightcore|#shorts|reels", re.I)
+
+
+def _music_score(e):
+    """Higher = more likely to be the song itself (YouTube Music no longer
+    returns its song catalogue to anonymous clients, so rank plain results)."""
+    ch = (e.get('channel') or e.get('uploader') or '')
+    title = e.get('title') or ''
+    dur = int(e.get('duration') or 0)
+    score = 0
+    if ch.endswith('- Topic'):
+        score += 100  # auto-generated official audio
+    if re.search(r'official audio|\(audio\)|\[audio\]|official lyric|lyric video', title, re.I):
+        score += 40
+    if re.search(r'official (mv|m/v|music video)|\bm/?v\b', title, re.I):
+        score += 30
+    if re.search(r'lyrics|가사', title, re.I):
+        score += 10
+    if dur and 90 <= dur <= 420:
+        score += 20
+    return score
+
+
 def _search(req):
     query = (req.get('query') or '').strip()
     limit = int(req.get('limit') or 20)
     if not query:
         return []
-    with yt_dlp.YoutubeDL(_opts({'extract_flat': True})) as ydl:
-        info = ydl.extract_info(f'ytsearch{limit}:{query}', download=False)
+    entries, seen = [], set()
+    # The plain query plus an "audio" variant: the second one surfaces
+    # official audio / Topic uploads that the first often misses.
+    for q in (query, query + ' audio'):
+        with yt_dlp.YoutubeDL(_opts({'extract_flat': True})) as ydl:
+            info = ydl.extract_info(f'ytsearch{limit}:{q}', download=False)
+        for e in (info or {}).get('entries') or []:
+            vid = e.get('id')
+            if not vid or vid in seen or e.get('live_status') in ('is_live', 'is_upcoming'):
+                continue
+            seen.add(vid)
+            entries.append(e)
+    songs = [e for e in entries
+             if not _NOT_MUSIC.search(e.get('title') or '')
+             and 60 <= int(e.get('duration') or 0) <= 600]
+    if len(songs) < 5:  # never leave the user with an empty page
+        songs = [e for e in entries if int(e.get('duration') or 0) >= 60]
+    songs.sort(key=lambda e: -_music_score(e))  # stable: keeps YouTube's order on ties
+    out = []
+    for e in songs[:limit]:
+        vid = e['id']
+        dur = int(e.get('duration') or 0)
+        out.append({
+            'videoId': vid,
+            'title': e.get('title') or 'Unknown',
+            'artist': _artist(e),
+            'thumbnail': _thumb(vid),
+            'duration': _fmt_duration(dur),
+            'durationSec': dur,
+        })
+    return out
+
+
+def _playlist(req):
+    """Tracks of a public playlist (used for the YouTube Music chart playlists)."""
+    pid = (req.get('id') or '').strip()
+    limit = int(req.get('limit') or 30)
+    if not pid:
+        return []
+    with yt_dlp.YoutubeDL(_opts({'extract_flat': True, 'playlistend': limit})) as ydl:
+        info = ydl.extract_info(f'https://www.youtube.com/playlist?list={pid}', download=False)
     out = []
     for e in (info or {}).get('entries') or []:
         vid = e.get('id')
@@ -263,7 +329,7 @@ def _version(_req):
     return {'ytdlp': yt_dlp.version.__version__}
 
 
-_OPS = {'search': _search, 'stream': _stream, 'video': _video, 'update': _update,
+_OPS = {'search': _search, 'playlist': _playlist, 'stream': _stream, 'video': _video, 'update': _update,
         'check': _check, 'version': _version}
 
 

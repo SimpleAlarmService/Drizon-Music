@@ -16,6 +16,16 @@ class SettingsService extends ChangeNotifier {
 
   AppSettings get settings => _settings;
 
+  static const _chosenKey = 'drizon_theme_chosen';
+
+  /// False until the user has picked light or dark on the first-run screen.
+  bool get themeChosen => _prefs.getBool(_chosenKey) ?? false;
+
+  Future<void> confirmTheme() async {
+    await _prefs.setBool(_chosenKey, true);
+    notifyListeners();
+  }
+
   // ── Init ──────────────────────────────────────────────────────────────────
 
   Future<void> init(SharedPreferences prefs) async {

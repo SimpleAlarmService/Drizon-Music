@@ -15,6 +15,8 @@ enum ExtractorChannel {
             switch call.method {
             case "search":
                 send(["op": "search", "query": args["query"] ?? "", "limit": 20], result) { $0 }
+            case "playlist":
+                send(["op": "playlist", "id": args["id"] ?? "", "limit": args["limit"] ?? 30], result) { $0 }
             case "getStream":
                 send(streamRequest(args), result) { ($0 as? [String: Any])?["url"] }
             case "getStreamInfo":

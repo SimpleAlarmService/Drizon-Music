@@ -337,6 +337,30 @@ class DownloadService extends ChangeNotifier implements OfflineStore {
     }
   }
 
+  /// Fetches a track's audio into a temporary play cache (not added to the
+  /// library) and returns the file path. Used when streaming directly fails.
+  Future<String?> cacheForPlayback(Track t) async {
+    final dir = Directory('${(await _directory()).path}/playcache');
+    await dir.create(recursive: true);
+    // Keep the cache small: drop all but the newest few files.
+    final old = dir.listSync().whereType<File>().toList()
+      ..sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
+    for (final f in old.skip(8)) {
+      try {
+        await f.delete();
+      } catch (_) {}
+    }
+    for (final f in old) {
+      final name = f.uri.pathSegments.last;
+      if (name.startsWith('${t.videoId}.') && !name.endsWith('.part')) return f.path;
+    }
+    final stream = await _music.getStreamInfo(t.videoId);
+    _rejectHls(stream.url);
+    final path = '${dir.path}/${t.videoId}.${extensionFor(stream.url)}';
+    await _fetch(stream.url, stream.headers, path, 'play:${t.videoId}', (p) => p);
+    return path;
+  }
+
   Future<void> _runAudio(_AudioJob job) async {
     final t = job.track;
     final stream = await _music.getStreamInfo(t.videoId);

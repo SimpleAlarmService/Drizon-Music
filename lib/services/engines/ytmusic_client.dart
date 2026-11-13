@@ -99,10 +99,25 @@ class YtmClient {
 
   // ── Public API ───────────────────────────────────────────────────────────
 
-  /// Songs first (with album + square cover), then music videos, then other videos.
+  /// Songs (with album + square cover).
+  ///
+  /// Anonymous sessions no longer get a "Songs" filter or any song rows, so,
+  /// like the iPod Composer app, this goes through albums: search albums, open
+  /// the best ones and rank their tracks against the query. Falls back to the
+  /// direct search if that finds nothing.
   Future<List<YtmItem>> search(String query) async {
     final q = query.trim();
     if (q.isEmpty) return const [];
+    try {
+      final viaAlbums = await _searchViaAlbums(q);
+      if (viaAlbums.isNotEmpty) return viaAlbums;
+    } catch (_) {
+      // fall back to the direct search below
+    }
+    return _searchDirect(q);
+  }
+
+  Future<List<YtmItem>> _searchDirect(String q) async {
     final first = await _call('search', {'query': q});
     final items = parseSearch(first);
 
@@ -119,6 +134,301 @@ class YtmClient {
       }
     }
     return rank(items);
+  }
+
+
+  // ── Album route (works without a login) ──────────────────────────────────
+
+  static const _albumsFilter = 'EgWKAQIYAWoQEBAQBRAKEAkQFRAEEA4QEQ==';
+
+  static final _junk = RegExp(
+      r'karaoke|カラオケ|歌っちゃ王|노래방|piano|피아노|lullaby|자장가|music box|오르골|instrumental|inst\.|cover|커버|mr\b|kpopstream|8d audio|nightcore|sped up|slowed',
+      caseSensitive: false);
+
+  static String _nrm(String s) =>
+      s.toLowerCase().replaceAll(RegExp('[\\s()\\[\\]\\-_.,\'"!?·’:&/]'), '');
+
+  static String? _pageType(Map run) => run['navigationEndpoint']?['browseEndpoint']
+      ?['browseEndpointContextSupportedConfigs']?['browseEndpointContextMusicConfig']?['pageType']
+      as String?;
+
+  static String? _browseId(Map run) =>
+      run['navigationEndpoint']?['browseEndpoint']?['browseId'] as String?;
+
+  static List<Map> _shelfItems(Map<String, dynamic> json) {
+    final tabs = (json['contents']?['tabbedSearchResultsRenderer']?['tabs'] as List?) ?? const [];
+    final sections = (tabs.isEmpty
+            ? null
+            : tabs[0]?['tabRenderer']?['content']?['sectionListRenderer']?['contents'] as List?) ??
+        const [];
+    final out = <Map>[];
+    for (final sec in sections) {
+      final shelf = sec['musicShelfRenderer'] ?? sec['itemSectionRenderer'];
+      for (final w in (shelf?['contents'] as List?) ?? const []) {
+        final r = w['musicResponsiveListItemRenderer'];
+        if (r is Map) out.add(r);
+      }
+    }
+    return out;
+  }
+
+  static List<Map> _flexRuns(Map item, int i) {
+    final cols = (item['flexColumns'] as List?) ?? const [];
+    if (i >= cols.length) return const [];
+    return _runs(cols[i]['musicResponsiveListItemFlexColumnRenderer']?['text']);
+  }
+
+  Future<List<_YtmAlbum>> _albums(String q) async {
+    final json = await _call('search', {'query': q, 'params': _albumsFilter});
+    final out = <_YtmAlbum>[];
+    for (final it in _shelfItems(json)) {
+      final id = it['navigationEndpoint']?['browseEndpoint']?['browseId'] as String?;
+      if (id == null || !id.startsWith('MPRE')) continue;
+      final sub = _flexRuns(it, 1);
+      final artists = sub.where((r) =>
+          _pageType(r) == 'MUSIC_PAGE_TYPE_ARTIST' || (_browseId(r)?.startsWith('UC') ?? false));
+      out.add(_YtmAlbum(
+        browseId: id,
+        title: _flexRuns(it, 0).map((r) => r['text'] ?? '').join(),
+        artist: artists.isNotEmpty
+            ? artists.map((r) => r['text']).join(', ')
+            : (sub.length > 2 ? '${sub[2]['text']}' : ''),
+        artistIds: [
+          for (final r in artists)
+            if (_browseId(r) != null) _browseId(r)!
+        ],
+      ));
+    }
+    return out;
+  }
+
+  static double _parseCount(String txt) {
+    final m = RegExp(r'([\d.,]+)\s*(억|만|천|[KMB])?', caseSensitive: false).firstMatch(txt);
+    if (m == null) return 0;
+    final n = double.tryParse(m.group(1)!.replaceAll(',', '')) ?? 0;
+    final mul = switch ((m.group(2) ?? '').toLowerCase()) {
+      '억' => 1e8,
+      '만' => 1e4,
+      '천' => 1e3,
+      'k' => 1e3,
+      'm' => 1e6,
+      'b' => 1e9,
+      _ => 1.0,
+    };
+    return n * mul;
+  }
+
+  /// The artist the query most likely refers to (top card, else first artist row).
+  Future<_YtmArtist?> _topArtist(String q) async {
+    final json = await _call('search', {'query': q});
+    List<String> aliases(String name) {
+      final m = RegExp(r'^(.*?)\s*[(（](.*?)[)）]').firstMatch(name);
+      return [name, if (m?.group(1) != null) m!.group(1)!, if (m?.group(2) != null) m!.group(2)!]
+          .map(_nrm)
+          .where((e) => e.isNotEmpty)
+          .toList();
+    }
+
+    final tabs = (json['contents']?['tabbedSearchResultsRenderer']?['tabs'] as List?) ?? const [];
+    final sections = (tabs.isEmpty
+            ? null
+            : tabs[0]?['tabRenderer']?['content']?['sectionListRenderer']?['contents'] as List?) ??
+        const [];
+    for (final sec in sections) {
+      final card = sec['musicCardShelfRenderer'];
+      if (card is! Map) continue;
+      final runs = _runs(card['title']);
+      if (runs.isNotEmpty && _pageType(runs.first) == 'MUSIC_PAGE_TYPE_ARTIST') {
+        final sub = _text(card['subtitle']);
+        return _YtmArtist(runs.first['text'] as String, _browseId(runs.first) ?? '',
+            _parseCount(sub.split('•').last), aliases(runs.first['text'] as String));
+      }
+      break;
+    }
+    for (final it in _shelfItems(json)) {
+      final id = it['navigationEndpoint']?['browseEndpoint']?['browseId'] as String? ?? '';
+      if (!id.startsWith('UC')) continue;
+      final sub = _flexRuns(it, 1).map((r) => r['text'] ?? '').join();
+      if (!RegExp(r'아티스트|artist', caseSensitive: false).hasMatch(sub)) continue;
+      final name = _flexRuns(it, 0).map((r) => r['text'] ?? '').join();
+      return _YtmArtist(name, id, _parseCount(sub.split('•').last), aliases(name));
+    }
+    return null;
+  }
+
+  Future<_YtmAlbumTracks?> _album(_YtmAlbum a) async {
+    final json = await _call('browse', {'browseId': a.browseId});
+    final two = json['contents']?['twoColumnBrowseResultsRenderer'];
+    final header = (two?['tabs']?[0]?['tabRenderer']?['content']?['sectionListRenderer']
+        ?['contents']?[0]?['musicResponsiveHeaderRenderer']) as Map?;
+    Map? shelf;
+    for (final c in (two?['secondaryContents']?['sectionListRenderer']?['contents'] as List?) ??
+        const []) {
+      if (c is Map && c['musicShelfRenderer'] is Map) {
+        shelf = c['musicShelfRenderer'] as Map;
+        break;
+      }
+    }
+    if (shelf == null) return null;
+    final thumbs =
+        header?['thumbnail']?['musicThumbnailRenderer']?['thumbnail']?['thumbnails'] as List?;
+    final thumb = (thumbs != null && thumbs.isNotEmpty) ? thumbs.last['url'] as String? : null;
+    final albumTitle = _text(header?['title']).isNotEmpty ? _text(header?['title']) : a.title;
+    final albumArtist = _runs(header?['straplineTextOne'])
+        .map((r) => '${r['text'] ?? ''}')
+        .where((t) => t.trim().isNotEmpty && t.trim() != '•' && t.trim() != '&' && t.trim() != ',')
+        .join(', ');
+    final tracks = <YtmItem>[];
+    for (final w in (shelf['contents'] as List?) ?? const []) {
+      final r = w['musicResponsiveListItemRenderer'];
+      if (r is! Map) continue;
+      final videoId = r['playlistItemData']?['videoId'] as String?;
+      if (videoId == null) continue;
+      final artistText = _flexRuns(r, 1)
+          .map((x) => '${x['text'] ?? ''}')
+          .where((t) => t.trim().isNotEmpty && t.trim() != '•')
+          .join();
+      final fixedList = (r['fixedColumns'] as List?) ?? const [];
+      final fixedRuns = fixedList.isEmpty
+          ? const <Map>[]
+          : _runs(fixedList.first['musicResponsiveListItemFixedColumnRenderer']?['text']);
+      final dur = _parseDuration(fixedRuns.map((x) => '${x['text'] ?? ''}').join());
+      tracks.add(YtmItem(
+        videoId: videoId,
+        title: _flexRuns(r, 0).map((x) => x['text'] ?? '').join(),
+        artist: artistText.isNotEmpty ? artistText : albumArtist,
+        album: albumTitle,
+        durationSec: dur,
+        thumbnail: thumb ?? '',
+        albumArt: thumb == null ? null : squareArt(thumb),
+        kind: YtmKind.song,
+      ));
+    }
+    return _YtmAlbumTracks(a, albumArtist.isNotEmpty ? albumArtist : a.artist, tracks);
+  }
+
+  static double _scoreAlbum(_YtmAlbum a, List<String> tokens) {
+    final hay = _nrm('${a.title} ${a.artist}');
+    var s = tokens.where(hay.contains).length.toDouble();
+    if (_junk.hasMatch('${a.title} ${a.artist}')) s -= 2;
+    return s;
+  }
+
+  /// Returns the relevance score and whether the track relates to the query.
+  static (double, bool) _scoreTrack(
+      YtmItem t, String albumArtist, List<String> tokens, String qn) {
+    final title = _nrm(t.title);
+    final rest = _nrm('${t.artist} ${t.album ?? ''} $albumArtist');
+    final total = tokens.fold<int>(0, (n, k) => n + k.length);
+    var inTitle = 0, inRest = 0;
+    for (final k in tokens) {
+      if (title.contains(k)) {
+        inTitle += k.length;
+      } else if (rest.contains(k)) {
+        inRest += k.length;
+      }
+    }
+    final denom = total == 0 ? 1 : total;
+    var score = inTitle / denom * 2 + inRest / denom;
+    final variants = <String>{
+      t.title,
+      for (final m in RegExp(r'[(（\[]([^)）\]]+)[)）\]]').allMatches(t.title)) m.group(1)!,
+      t.title.replaceFirst(RegExp(r'[(（\[].*$'), ''),
+    }.map(_nrm).where((v) => v.length >= 2);
+    final titleInQuery = variants.any(qn.contains);
+    if (titleInQuery) score += 3;
+    final related = inTitle + inRest > 0 || titleInQuery;
+    if (title == qn) score += 1;
+    if (_junk.hasMatch('${t.album ?? ''} $albumArtist ${t.artist}')) score -= 2.5;
+    if (RegExp(r'\(inst\.?\)|instrumental|\bmr\b|sped up|remix', caseSensitive: false)
+            .hasMatch(t.title) &&
+        !RegExp(r'inst|mr|remix|sped', caseSensitive: false).hasMatch(qn)) {
+      score -= 1;
+    }
+    return (score, related);
+  }
+
+  Future<List<YtmItem>> _searchViaAlbums(String q) async {
+    final results = await Future.wait<Object?>([
+      _albums(q).catchError((_) => <_YtmAlbum>[]),
+      _topArtist(q).catchError((_) => null),
+    ]);
+    final albums0 = results[0] as List<_YtmAlbum>;
+    final artist = results[1] as _YtmArtist?;
+    if (albums0.isEmpty) return const [];
+
+    final tokens = q.split(RegExp(r'\s+')).map(_nrm).where((e) => e.isNotEmpty).toList();
+    final qn = _nrm(q);
+    final main = (artist != null && artist.listeners >= 1e5) ? artist : null;
+    bool isMain(String? name, List<String> ids) {
+      if (main == null) return false;
+      if (ids.isNotEmpty) return ids.contains(main.browseId);
+      final first = (name ?? '').split(RegExp(r',| 및 | & ')).first;
+      return main.aliases.contains(_nrm(first));
+    }
+
+    var albums = albums0;
+    if (main != null) {
+      final restQ = tokens
+          .where((k) => !main.aliases.any((a) => a.contains(k) || k.contains(a)))
+          .join(' ');
+      final extra = await _albums('${main.name} ${restQ.isEmpty ? q : restQ}')
+          .catchError((_) => <_YtmAlbum>[]);
+      final seen = albums.map((a) => a.browseId).toSet();
+      albums = [...albums, ...extra.where((a) => !seen.contains(a.browseId))];
+    }
+
+    String firstArtist(String s) => _nrm(s.split(RegExp(r',| 및 | & ')).first);
+    final authority = <String, int>{};
+    for (final a in albums) {
+      if (_junk.hasMatch('${a.title} ${a.artist}')) continue;
+      authority.update(firstArtist(a.artist), (v) => v + 1, ifAbsent: () => 1);
+    }
+
+    final pick = <_YtmAlbum>[];
+    void add(_YtmAlbum a) {
+      if (!pick.contains(a)) pick.add(a);
+    }
+
+    List<_YtmAlbum> bestByScore(Iterable<_YtmAlbum> list, int n, {bool positiveOnly = false}) {
+      final scored = [
+        for (final a in list) (a, _scoreAlbum(a, tokens), albums.indexOf(a)),
+      ].where((x) => !positiveOnly || x.$2 > 0).toList()
+        ..sort((x, y) => y.$2 != x.$2 ? y.$2.compareTo(x.$2) : x.$3.compareTo(y.$3));
+      return [for (final x in scored.take(n)) x.$1];
+    }
+
+    bestByScore(albums.where((a) => isMain(a.artist, a.artistIds)), 5).forEach(add);
+    albums0.take(4).forEach(add);
+    bestByScore(albums.where((a) => !pick.contains(a)), 2, positiveOnly: true).forEach(add);
+
+    final rankOf = {for (var i = 0; i < albums0.length; i++) albums0[i].browseId: i};
+    final opened = await Future.wait(
+        pick.map((a) => _album(a).then<_YtmAlbumTracks?>((v) => v).catchError((_) => null)));
+
+    final scored = <(YtmItem, double)>[];
+    final seen = <String>{};
+    for (final al in opened.whereType<_YtmAlbumTracks>()) {
+      final rank = rankOf[al.album.browseId] ?? 10;
+      final auth = (authority[firstArtist(al.album.artist)] ?? 0).clamp(0, 3);
+      final albumIsMain = isMain(al.album.artist, al.album.artistIds);
+      for (final t in al.tracks) {
+        if (!seen.add(t.videoId)) continue;
+        final (base, related) = _scoreTrack(t, al.albumArtist, tokens, qn);
+        final score = base +
+            auth * 0.4 +
+            (4 - rank).clamp(0, 4) * 0.15 +
+            (related && albumIsMain ? 3 : 0);
+        scored.add((t, score));
+      }
+    }
+    // Stable: equal scores keep album order.
+    final indexed = scored.asMap().entries.toList()
+      ..sort((a, b) {
+        final c = b.value.$2.compareTo(a.value.$2);
+        return c != 0 ? c : a.key.compareTo(b.key);
+      });
+    return [for (final e in indexed.take(40)) e.value.$1];
   }
 
   /// Videos only (music videos, stages, fancams…), using the "Videos" filter chip.
@@ -466,4 +776,25 @@ class YtmClient {
     }
     return bestScore >= matchThreshold ? best : null;
   }
+}
+
+class _YtmAlbum {
+  const _YtmAlbum(
+      {required this.browseId, required this.title, required this.artist, required this.artistIds});
+  final String browseId, title, artist;
+  final List<String> artistIds;
+}
+
+class _YtmArtist {
+  const _YtmArtist(this.name, this.browseId, this.listeners, this.aliases);
+  final String name, browseId;
+  final double listeners;
+  final List<String> aliases;
+}
+
+class _YtmAlbumTracks {
+  const _YtmAlbumTracks(this.album, this.albumArtist, this.tracks);
+  final _YtmAlbum album;
+  final String albumArtist;
+  final List<YtmItem> tracks;
 }

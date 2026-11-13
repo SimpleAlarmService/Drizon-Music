@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/track.dart';
+import '../../services/chart_service.dart';
 import '../../services/library_service.dart';
 import '../../services/player_service.dart';
 import '../../theme.dart';
@@ -22,6 +23,11 @@ class HomePage extends StatelessWidget {
     final library = context.watch<LibraryService>();
     final history = library.history;
     final liked = library.liked;
+    final charts = context.watch<ChartService>();
+    final chartShelves = [
+      for (final c in ChartService.charts)
+        if (charts.tracks(c.id).isNotEmpty) _Shelf(title: c.title, tracks: charts.tracks(c.id)),
+    ];
 
     return ListView(
       padding: EdgeInsets.only(bottom: 24 + ShellInsets.of(context)),
@@ -49,13 +55,19 @@ class HomePage extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
           child: Text('지금 듣기', style: Type.title(pal).copyWith(fontSize: 26)),
         ),
-        if (history.isEmpty && liked.isEmpty)
-          _EmptyState(onSearch: onSearch)
+        if (history.isEmpty && liked.isEmpty && chartShelves.isEmpty)
+          charts.supported && charts.loading
+              ? const Padding(
+                  padding: EdgeInsets.only(top: 80),
+                  child: Center(child: CupertinoActivityIndicator(radius: 14)),
+                )
+              : _EmptyState(onSearch: onSearch)
         else ...[
           if (history.isNotEmpty) _Featured(track: history.first, queue: history),
           if (history.length > 1)
             _Shelf(title: '최근 재생', tracks: history),
           if (liked.isNotEmpty) _Shelf(title: '좋아요 표시한 곡', tracks: liked),
+          ...chartShelves,
         ],
       ],
     );

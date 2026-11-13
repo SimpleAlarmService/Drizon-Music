@@ -16,6 +16,7 @@ import 'package:oye/models/settings_model.dart';
 import 'package:oye/models/track.dart';
 import 'package:oye/models/video_streams.dart';
 import 'package:oye/services/download_service.dart';
+import 'package:oye/services/chart_service.dart';
 import 'package:oye/services/extractor_update_service.dart';
 import 'package:oye/services/engines/bugs_client.dart';
 import 'package:oye/services/engines/lrclib_client.dart';
@@ -48,6 +49,8 @@ class _FakeMusic implements MusicService {
       ];
   @override
   Future<String> getStreamUrl(String id) async => 'https://example.invalid/$id.m4a';
+  @override
+  Future<List<Track>> playlist(String id, {int limit = 30}) async => const [];
   @override
   Future<StreamInfo> getStreamInfo(String id) async =>
       StreamInfo(await getStreamUrl(id), const {});
@@ -197,7 +200,7 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    SharedPreferences.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues({'drizon_theme_chosen': true});
     final prefs = await SharedPreferences.getInstance();
     final storage = StorageService()..initWithPrefs(prefs);
     final settings = SettingsService();
@@ -252,6 +255,7 @@ void main() {
           Provider<YtmClient>.value(value: ytm),
           ChangeNotifierProvider<ExtractorUpdateService>.value(
               value: ExtractorUpdateService(music, prefs)),
+          ChangeNotifierProvider<ChartService>.value(value: ChartService(music, prefs)),
         ],
         child: const DrizonApp(),
       ),

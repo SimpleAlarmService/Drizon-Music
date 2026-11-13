@@ -148,7 +148,7 @@ class _VideosPageState extends State<VideosPage> {
             itemCount: items.length,
             itemBuilder: (context, i) => FadeSlideIn(
               index: i,
-              child: _VideoTile(item: items[i], onTap: () => _open(items[i])),
+              child: VideoTile(item: items[i], onTap: () => _open(items[i])),
             ),
           );
         },
@@ -183,7 +183,7 @@ class _VideosPageState extends State<VideosPage> {
     return ListView.builder(
       padding: EdgeInsets.fromLTRB(16, 4, 16, 24 + ShellInsets.of(context)),
       itemCount: videos.length,
-      itemBuilder: (context, i) => _VideoTile(
+      itemBuilder: (context, i) => VideoTile(
         item: videos[i].item,
         trailing: qualityLabel(videos[i].height),
         onTap: () => _open(videos[i].item),
@@ -192,8 +192,8 @@ class _VideosPageState extends State<VideosPage> {
   }
 }
 
-class _VideoTile extends StatelessWidget {
-  const _VideoTile({required this.item, required this.onTap, this.trailing});
+class VideoTile extends StatelessWidget {
+  const VideoTile({required this.item, required this.onTap, this.trailing});
   final YtmItem item;
   final VoidCallback onTap;
   final String? trailing;

@@ -16,6 +16,8 @@ import 'services/player_service.dart';
 import 'services/settings_service.dart';
 import 'services/storage_service.dart';
 import 'theme.dart';
+import 'services/chart_service.dart';
+import 'ui/pages/theme_choice_page.dart';
 import 'ui/app_shell.dart';
 
 void main() async {
@@ -57,6 +59,7 @@ void main() async {
   settings.addListener(() => music.applySettings(settings.settings));
 
   final extractorUpdates = ExtractorUpdateService(music, prefs);
+  final charts = ChartService(music, prefs);
 
   final downloads = DownloadService(prefs, music,
       directory: getApplicationDocumentsDirectory);
@@ -70,7 +73,8 @@ void main() async {
     ..onHistoryChanged = library.historyChanged
     ..onTrackStarted = metadata.prefetch
     ..localFileFor = downloads.localPath
-    ..localCoverFor = downloads.localCover;
+    ..localCoverFor = downloads.localCover
+    ..cacheFor = downloads.cacheForPlayback;
   await player.restoreState();
 
   runApp(
@@ -85,12 +89,14 @@ void main() async {
         ChangeNotifierProvider<DownloadService>.value(value: downloads),
         Provider<YtmClient>.value(value: ytm),
         ChangeNotifierProvider<ExtractorUpdateService>.value(value: extractorUpdates),
+        ChangeNotifierProvider<ChartService>.value(value: charts),
       ],
       child: const DrizonApp(),
     ),
   );
 
   extractorUpdates.checkOnLaunch();
+  charts.load();
 }
 
 class DrizonApp extends StatelessWidget {
@@ -99,6 +105,7 @@ class DrizonApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = context.select<SettingsService, bool>((s) => s.settings.darkMode);
+    final chosen = context.select<SettingsService, bool>((s) => s.themeChosen);
     return MaterialApp(
       title: 'Drizon',
       debugShowCheckedModeBanner: false,
@@ -109,7 +116,7 @@ class DrizonApp extends StatelessWidget {
         value: dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
         child: child!,
       ),
-      home: const AppShell(),
+      home: chosen ? const AppShell() : const ThemeChoicePage(),
     );
   }
 }

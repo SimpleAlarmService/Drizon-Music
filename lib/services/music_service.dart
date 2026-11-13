@@ -15,6 +15,10 @@ abstract class MusicService {
   Future<List<Track>> search(String query);
   Future<String> getStreamUrl(String videoId);
 
+  /// Tracks of a public YouTube playlist (the YouTube Music charts are
+  /// playlists). iOS and macOS only; elsewhere it returns an empty list.
+  Future<List<Track>> playlist(String id, {int limit = 30});
+
   /// Stream URL plus the HTTP headers the player must send with it.
   Future<StreamInfo> getStreamInfo(String videoId);
 
@@ -60,6 +64,9 @@ class _YtmSearchFirst implements MusicService {
 
   @override
   Future<String> getStreamUrl(String videoId) => _inner.getStreamUrl(videoId);
+  @override
+  Future<List<Track>> playlist(String id, {int limit = 30}) =>
+      _inner.playlist(id, limit: limit);
   @override
   Future<StreamInfo> getStreamInfo(String videoId) => _inner.getStreamInfo(videoId);
   @override
@@ -123,6 +130,13 @@ class _NativeMusicService implements MusicService {
   @override
   Future<String> getStreamUrl(String videoId) async =>
       (await getStreamInfo(videoId)).url;
+
+  @override
+  Future<List<Track>> playlist(String id, {int limit = 30}) async {
+    if (!(Platform.isIOS || Platform.isMacOS)) return const [];
+    final raw = await _ch.invokeMethod<List>('playlist', {'id': id, 'limit': limit});
+    return (raw ?? const []).cast<Map<dynamic, dynamic>>().map(Track.fromMap).toList();
+  }
 
   @override
   Future<StreamInfo> getStreamInfo(String videoId) async {

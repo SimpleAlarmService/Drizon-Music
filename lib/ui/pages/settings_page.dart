@@ -6,7 +6,6 @@ import '../../models/settings_model.dart';
 import '../../services/download_service.dart';
 import '../../services/extractor_update_service.dart';
 import '../../services/library_service.dart';
-import '../../services/music_service.dart';
 import '../../services/settings_service.dart';
 import '../../theme.dart';
 

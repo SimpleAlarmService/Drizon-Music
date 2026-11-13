@@ -14,11 +14,18 @@ class VinylRecord extends StatefulWidget {
     required this.size,
     this.spinning = false,
     this.labelColor = const Color(0xFFFA2D48),
+    this.ink,
+    this.paper,
   });
 
   final double size;
   final bool spinning;
   final Color labelColor;
+
+  /// One-colour mode (the logo): the disc is drawn in [ink] and its grooves and
+  /// label are cut out in [paper] (the page background) instead of red/black.
+  final Color? ink;
+  final Color? paper;
 
   @override
   State<VinylRecord> createState() => _VinylRecordState();
@@ -79,9 +86,10 @@ class _VinylRecordState extends State<VinylRecord> with SingleTickerProviderStat
         ValueListenableBuilder<double>(
           valueListenable: _angle,
           builder: (_, a, child) => Transform.rotate(angle: a, child: child),
-          child: CustomPaint(painter: _DiscPainter(widget.labelColor)),
+          child: CustomPaint(painter: _DiscPainter(widget.labelColor, widget.ink, widget.paper)),
         ),
-        const IgnorePointer(child: CustomPaint(painter: _SheenPainter())),
+        if (widget.ink == null)
+          const IgnorePointer(child: CustomPaint(painter: _SheenPainter())),
       ]),
     );
   }
@@ -90,13 +98,30 @@ class _VinylRecordState extends State<VinylRecord> with SingleTickerProviderStat
 /// Flat, simple record: black disc, two faint grooves, red label, a small dot
 /// on the label (so the spin is visible) and the spindle hole.
 class _DiscPainter extends CustomPainter {
-  const _DiscPainter(this.label);
+  const _DiscPainter(this.label, this.ink, this.paper);
   final Color label;
+  final Color? ink;
+  final Color? paper;
 
   @override
   void paint(Canvas canvas, Size size) {
     final c = size.center(Offset.zero);
     final r = size.shortestSide / 2;
+
+    if (ink != null) {
+      final cut = paper ?? Colors.transparent;
+      canvas.drawCircle(c, r, Paint()..color = ink!);
+      final groove = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = math.max(0.6, r * 0.06)
+        ..color = cut;
+      canvas.drawCircle(c, r * 0.80, groove);
+      canvas.drawCircle(c, r * 0.62, groove);
+      canvas.drawCircle(c, r * 0.40, Paint()..color = cut);
+      canvas.drawCircle(c + Offset(0, -r * 0.26), math.max(0.7, r * 0.065), Paint()..color = ink!);
+      canvas.drawCircle(c, math.max(0.7, r * 0.08), Paint()..color = ink!);
+      return;
+    }
 
     canvas.drawCircle(c, r, Paint()..color = const Color(0xFF141416));
 
@@ -114,7 +139,8 @@ class _DiscPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_DiscPainter old) => old.label != label;
+  bool shouldRepaint(_DiscPainter old) =>
+      old.label != label || old.ink != ink || old.paper != paper;
 }
 
 /// A single soft highlight that stays put while the record turns.
