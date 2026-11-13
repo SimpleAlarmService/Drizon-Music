@@ -52,5 +52,7 @@
 		<string>audio</string>
 		<string>fetch</string>
 	</array>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Drizon does not record audio. This is required by the audio playback libraries.</string>
 </dict>
 </plist>
