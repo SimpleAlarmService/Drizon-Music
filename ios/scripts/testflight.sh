@@ -4,7 +4,7 @@
 #   ./ios/scripts/testflight.sh
 #
 # Needs: Xcode signed in to the Apple Developer team WSH6T8F59M (Xcode ▸
-# Settings ▸ Accounts), and an app record for bundle id com.oye.oye in App
+# Settings ▸ Accounts), and an app record for bundle id com.drizon.music in App
 # Store Connect. To upload without an Xcode login (e.g. CI), set an App Store
 # Connect API key instead:
 #   ASC_KEY_ID=…  ASC_ISSUER_ID=…  ASC_KEY_PATH=/path/AuthKey_XXXX.p8
@@ -34,7 +34,7 @@ xcodebuild -exportArchive \
   -archivePath build/ios/archive/Runner.xcarchive \
   -exportOptionsPlist ios/ExportOptions-TestFlight.plist \
   -exportPath build/ios/testflight \
-  -allowProvisioningUpdates "${AUTH[@]}"
+  -allowProvisioningUpdates ${AUTH[@]+"${AUTH[@]}"}
 
 echo
 echo "Uploaded build $BUILD_NUMBER. It appears in TestFlight after Apple finishes processing (usually 5–30 min)."

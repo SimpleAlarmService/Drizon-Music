@@ -1,5 +1,4 @@
 import Foundation
-import Python
 
 /// Embedded CPython running yt-dlp (see ios/PythonApp/app/drizon_extractor.py).
 ///
