@@ -31,6 +31,10 @@ class PlayerService extends ChangeNotifier {
   final List<int> _shuffleHistory = [];
 
   bool _shuffleEnabled = false;
+
+  /// Songs already played in the current shuffle round: shuffle visits every
+  /// song once before any repeats (a plain random pick repeats songs early).
+  final Set<String> _shufflePlayed = {};
   RepeatMode _repeatMode = RepeatMode.none;
   bool _isLoading = false;
   String? _errorMessage;
@@ -151,6 +155,7 @@ class PlayerService extends ChangeNotifier {
     );
     _player.setLoopMode(
         _repeatMode == RepeatMode.one ? LoopMode.one : LoopMode.off);
+    _shuffleEnabled = _settings.settings.shuffle;
 
     // Restore queue / position
     final saved = _storage.loadPlayerState();
@@ -168,6 +173,7 @@ class PlayerService extends ChangeNotifier {
 
   Future<void> playTrack(Track track, {List<Track>? queue, int? index}) async {
     _shuffleHistory.clear();
+    _shufflePlayed.clear();
     if (queue != null) {
       _queue = List.of(queue);
       _currentIndex = index ?? _queue.indexWhere((t) => t.videoId == track.videoId);
@@ -339,16 +345,34 @@ class PlayerService extends ChangeNotifier {
   }
 
   /// Returns the index of the next track to play, or null if playback should stop.
+  @visibleForTesting
+  void setQueueForTest(List<Track> q, int index) {
+    _queue = List.of(q);
+    _currentIndex = index;
+    _shufflePlayed.clear();
+  }
+
+  @visibleForTesting
+  int? nextIndexForTest(int from) => _nextIndex(from);
+
   int? _nextIndex(int from, {bool afterFailure = false}) {
     if (_queue.isEmpty) return null;
 
     if (_shuffleEnabled && !afterFailure) {
-      final candidates = List.generate(_queue.length, (i) => i)
-          .where((i) => i != from)
-          .toList();
+      if (from >= 0 && from < _queue.length) _shufflePlayed.add(_queue[from].videoId);
+      List<int> fresh() => [
+            for (var i = 0; i < _queue.length; i++)
+              if (i != from && !_shufflePlayed.contains(_queue[i].videoId)) i
+          ];
+      var candidates = fresh();
       if (candidates.isEmpty) {
-        // Single track, only loop if repeatAll
-        return _repeatMode == RepeatMode.all ? from : null;
+        // Everything has been played once.
+        if (_repeatMode != RepeatMode.all) return null;
+        _shufflePlayed
+          ..clear()
+          ..add(_queue[from].videoId);
+        candidates = fresh();
+        if (candidates.isEmpty) return from; // a single song on repeat-all
       }
       final picked = candidates[_rng.nextInt(candidates.length)];
       _shuffleHistory.add(from);
@@ -387,9 +411,13 @@ class PlayerService extends ChangeNotifier {
     await _player.seek(position);
   }
 
-  void toggleShuffle() {
-    _shuffleEnabled = !_shuffleEnabled;
+  void toggleShuffle() => setShuffle(!_shuffleEnabled);
+
+  void setShuffle(bool on) {
+    _shuffleEnabled = on;
     _shuffleHistory.clear();
+    _shufflePlayed.clear();
+    _settings.setShuffle(on); // remembered for the next launch
     notifyListeners();
   }
 

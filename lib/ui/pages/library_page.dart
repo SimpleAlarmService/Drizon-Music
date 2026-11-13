@@ -28,7 +28,7 @@ class _LibraryPageState extends State<LibraryPage> {
   void _play(Collection c, {bool shuffle = false}) {
     if (c.tracks.isEmpty) return;
     final player = context.read<PlayerService>();
-    if (player.shuffleEnabled != shuffle) player.toggleShuffle();
+    player.setShuffle(shuffle);
     final start = shuffle ? math.Random().nextInt(c.tracks.length) : 0;
     player.playTrack(c.tracks[start], queue: c.tracks, index: start);
   }
@@ -185,7 +185,6 @@ class _LibraryPageState extends State<LibraryPage> {
               child: TrackRow(
               track: selected.tracks[i],
               onTap: () {
-                if (player.shuffleEnabled) player.toggleShuffle();
                 player.playTrack(selected.tracks[i],
                     queue: selected.tracks, index: i);
               },
